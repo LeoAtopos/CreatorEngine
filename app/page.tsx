@@ -3,7 +3,7 @@ import { CreatorEngine } from "./creator-engine";
 
 export const metadata: Metadata = {
   title: "创作引擎 · 本地游戏设计工作台",
-  description: "从最初想法到完整设计框架的本地、规则驱动游戏创作引擎。",
+  description: "从模糊灵感到设计判断、最小原型和证据迭代的本地游戏创作工作台。",
 };
 
 export default function Home() {
