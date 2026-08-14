@@ -555,3 +555,124 @@ textarea::placeholder, input::placeholder { color: #b2b2ad; }
   .workbench-actions { align-items: stretch; flex-direction: column; }
   .workbench-actions > button { width: 100%; justify-content: center; }
 }
+
+/* Accessibility typography floor
+   Chinese helper text needs a larger optical size than the original compact scale. */
+:root {
+  --type-caption: 12px;
+  --type-small: 13px;
+  --type-control: 14px;
+  --type-body: 15px;
+  --type-support: 16px;
+}
+
+body { font-size: var(--type-body); }
+small { font-size: var(--type-small) !important; }
+
+.turn-number,
+.turn-content > span,
+.rewrite-block > span,
+.statement-block > span,
+.pillar-index,
+.path-list li > span,
+.state-item > span,
+.local-note,
+.brand-button .brand-mark,
+.entry-card > span,
+.principle-strip span,
+.phase-path-heading > span,
+.phase-path li button > span,
+.status-metrics span,
+.issue-list > span,
+.node-kicker,
+.node-kicker strong,
+.node-context span,
+.generated-sentence span,
+.editor-heading > span,
+.loop-field > span,
+.comparison-columns > section > span,
+.question-list-editor > div > span,
+.evidence-compare span,
+.validation-note,
+.checkpoint-grid span,
+.mission-card span,
+.workbench-grid span,
+.section-title span,
+.section-title strong,
+.work-path-list > div > span {
+  font-size: var(--type-caption);
+}
+
+.context-label,
+.phase-path-heading small,
+.phase-path li button,
+.issue-list button,
+.generated-sentence button,
+.add-row,
+.inline-notice,
+.editor-heading button,
+.feasibility-row span,
+.question-list-editor button,
+.hypothesis-builder span,
+.completion-options > button:not(.primary-button),
+.checkpoint-actions > div button,
+.mission-card p {
+  font-size: var(--type-small);
+}
+
+.top-progress,
+.save-status,
+.restart-button,
+.reference-hint > summary,
+.reference-content,
+.row-reference-content,
+.chip-list button,
+.back-button,
+.secondary-export,
+.path-list button,
+.state-item p,
+.phase-path-heading strong,
+.node-context p,
+.field-control > span,
+.select-block > span,
+.select-block select,
+.choice-grid-field legend,
+.choice-grid button,
+.feasibility-row strong,
+.feasibility-row select,
+.feasibility-row input,
+.question-list-editor input,
+.hypothesis-builder input,
+.checkpoint-grid p,
+.workbench-grid p,
+.work-path-list p,
+.work-path-list strong {
+  font-size: var(--type-control);
+}
+
+.brand,
+.panel-header h2,
+.line-input,
+.summary-intro,
+.summary-field p,
+.field-control input,
+.field-control textarea,
+.node-choice-list > button strong,
+.editor-heading strong,
+.loop-field strong,
+.loop-field input,
+.evidence-compare p {
+  font-size: var(--type-body);
+}
+
+.supporting-copy,
+.user-utterance,
+.idea-context,
+.turn-content textarea,
+.rewrite-block textarea,
+.statement-block textarea,
+.x-statement textarea,
+.pillar-body textarea,
+.compact-textarea {
+  font-size: var(--type-support);
+}

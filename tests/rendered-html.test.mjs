@@ -40,10 +40,11 @@ test("server-renders the adaptive CreatorEngine workbench", async () => {
 });
 
 test("the local workflow covers concept, structure, judgment, action, and evidence", async () => {
-  const [source, nodeSource, modelSource] = await Promise.all([
+  const [source, nodeSource, modelSource, styleSource] = await Promise.all([
     readFile(new URL("../app/creator-engine.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/creator-engine-nodes.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/creator-engine-model.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   for (const requiredText of [
@@ -87,5 +88,12 @@ test("the local workflow covers concept, structure, judgment, action, and eviden
   assert.match(modelSource, /creator-engine\.game-design\.v2/);
   assert.match(modelSource, /creator-engine\.game-design\.v3/);
   assert.match(modelSource, /hypothesis|supported|contradicted/);
+  assert.match(styleSource, /Accessibility typography floor/);
+  assert.match(styleSource, /--type-caption: 12px/);
+  assert.match(styleSource, /--type-small: 13px/);
+  assert.match(styleSource, /--type-control: 14px/);
+  assert.match(styleSource, /--type-body: 15px/);
+  assert.match(styleSource, /--type-support: 16px/);
+  assert.match(styleSource, /small \{ font-size: var\(--type-small\) !important; \}/);
   assert.doesNotMatch(`${source}\n${nodeSource}\n${modelSource}`, /\bfetch\s*\(|openai|anthropic|chatgpt/i);
 });
