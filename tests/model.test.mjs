@@ -16,7 +16,8 @@ test("the v3 project starts with an adaptive entry and evidence-aware state", ()
   assert.equal(project.evidenceStatus, "idea");
   assert.equal(project.pillars.length, 2);
   assert.equal(project.tasks.length, 2);
-  assert.equal(nodes.length, 37);
+  assert.equal(nodes.length, 38);
+  assert.equal(nodes.some((node) => node.id === "S1" && node.title === "确定本次目标"), true);
 });
 
 test("legacy v2 content migrates without turning design dimensions into project pillars", () => {

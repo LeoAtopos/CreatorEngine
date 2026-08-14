@@ -52,6 +52,7 @@ test("the local workflow covers concept, structure, judgment, action, and eviden
     "判断与取舍",
     "行动路径",
     "证据迭代",
+    "确定本次目标",
     "不可失去的火花",
     "玩家 Fantasy",
     "核心玩法句",
@@ -80,6 +81,8 @@ test("the local workflow covers concept, structure, judgment, action, and eviden
   }
 
   assert.match(source, /window\.localStorage/);
+  assert.match(source, /case "S1"/);
+  assert.match(source, /targetForSessionGoal/);
   assert.match(modelSource, /migrateLegacyProject/);
   assert.match(modelSource, /creator-engine\.game-design\.v2/);
   assert.match(modelSource, /creator-engine\.game-design\.v3/);

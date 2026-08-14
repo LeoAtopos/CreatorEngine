@@ -21,6 +21,7 @@ export const phases: Array<{ id: PhaseId; title: string; short: string; descript
 
 export const nodes: NodeMeta[] = [
   { id: "S0", phase: "start", title: "从哪里开始", short: "项目入口", purpose: "选择这次工作的入口，而不是被迫从头填写。" },
+  { id: "S1", phase: "start", title: "确定本次目标", short: "本次目标", purpose: "先说明这次希望推进到什么结果，再补最短的必要前置问题。" },
   { id: "A0", phase: "clarify", title: "保存原始火花", short: "原始想法", purpose: "保留作者原话，后续改写永远不会覆盖它。" },
   { id: "A1", phase: "clarify", title: "找出不可失去的火花", short: "核心火花", purpose: "当方案膨胀时，知道什么值得被优先保护。" },
   { id: "A2", phase: "clarify", title: "确定玩家 Fantasy", short: "玩家身份", purpose: "说明玩家在行动中相信自己是谁、能做到什么。", reference: "Fantasy 与 PENS：身份愿望不是世界观标签。" },

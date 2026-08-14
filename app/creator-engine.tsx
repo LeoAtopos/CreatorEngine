@@ -72,6 +72,13 @@ const differentiationChoices = ["不同寻常的规则", "独特核心操作", "
 const riskChoices = ["体验", "操作", "系统", "技术", "内容", "生产", "受众", "价值/安全"];
 const decisionChoices = ["采用当前方向", "暂作工作假设", "并行验证两个方向", "信息不足，暂不决定", "放弃这一方向"];
 const prototypeChoices = ["Role / 价值理解", "Look & Feel / 操作感受", "Implementation / 技术可行", "系统模拟", "内容管线", "受众访谈"];
+const sessionGoalChoices: Choice[] = [
+  { id: "clarify", title: "把想法说清", summary: "形成可继续设计的概念简报" },
+  { id: "structure", title: "补全玩法结构", summary: "建立支柱、循环、选择与体验因果" },
+  { id: "judge", title: "判断一个方案", summary: "用参考、约束和风险做当前取舍" },
+  { id: "act", title: "制定工作路径", summary: "把最大未知变成一轮最小验证" },
+  { id: "continue", title: "继续上次", summary: "由当前缺口与待复核项推荐下一问" },
+];
 const feasibilityAxes = [
   ["experience", "体验", "玩家是否可能获得目标感受"],
   ["system", "系统", "规则能否形成预期动态"],
@@ -115,8 +122,29 @@ function recommendedNode(project: ProjectState) {
   return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? issues[0]?.nodeId ?? "D8";
 }
 
+function targetForSessionGoal(project: ProjectState) {
+  const issues = deriveIssues(project);
+  const firstIssueIn = (prefixes: string[]) => issues.find((issue) => prefixes.some((prefix) => issue.nodeId.startsWith(prefix)))?.nodeId;
+
+  switch (project.sessionGoal) {
+    case "clarify":
+      return firstIssueIn(["A"]) ?? "A8";
+    case "structure":
+      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "B1";
+    case "judge":
+      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "C1";
+    case "act":
+      return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? "D0";
+    case "continue":
+      return recommendedNode(project);
+    default:
+      return "A0";
+  }
+}
+
 function validForNode(project: ProjectState, nodeId: string) {
   switch (nodeId) {
+    case "S1": return Boolean(project.sessionGoal);
     case "A0": return Boolean(project.rawIdea.trim());
     case "A1": return Boolean(project.sparkCategory && project.spark.trim());
     case "A2": return Boolean(project.fantasyId && project.fantasyStatement.trim());
@@ -368,6 +396,24 @@ function NodeRenderer(props: RendererProps) {
   switch (node.id) {
     case "S0":
       return <StartNode project={project} issues={issues} edit={edit} go={go} />;
+    case "S1": {
+      const targetNodeId = targetForSessionGoal(project);
+      const targetNode = nodeMap[targetNodeId];
+      return <NodeFrame
+        node={node}
+        project={project}
+        valid={valid}
+        context={issues.length ? `当前有 ${issues.length} 项缺口、风险或待复核内容。` : "当前没有自动发现的阻断项。"}
+        noAlternative
+        nextLabel={targetNode ? `前往 ${targetNode.short}` : "开始本次工作"}
+        onBack={() => go("S0")}
+        onComplete={(mode) => complete(mode, targetNodeId)}
+      >
+        <ChoiceGrid label="这次希望推进到什么结果？" choices={sessionGoalChoices} selected={[project.sessionGoal]} onToggle={(sessionGoal) => edit({ sessionGoal })} single />
+        <ChoiceGrid label="这次工作深度" choices={[{ id: "quick", title: "快速梳理", summary: "抓核心与下一步" }, { id: "standard", title: "标准设计", summary: "完成主干判断" }, { id: "deep", title: "深入检查", summary: "风险与证据优先" }]} selected={[project.depth]} onToggle={(depth) => edit({ depth: depth as ProjectState["depth"] })} single />
+        {project.sessionGoal && targetNode && <ReferenceHint title="CE 建议的起点"><p>目标是“{sessionGoalChoices.find((choice) => choice.id === project.sessionGoal)?.title}”。根据当前状态，先处理 {targetNode.id} · {targetNode.title}；完成后继续前往目标阶段。</p></ReferenceHint>}
+      </NodeFrame>;
+    }
     case "A0":
       return wrap(<>
         <TextArea label="我的最初想法" value={project.rawIdea} onChange={(rawIdea) => edit({ rawIdea })} placeholder="例如：我想做一个需要不断把奇怪物件垒高的物理游戏……" large />
@@ -666,10 +712,9 @@ function StartNode({ project, issues, edit, go }: { project: ProjectState; issue
       <p className="supporting-copy">不是写满一份表格。CE 帮你澄清核心、补全结构、做好判断，再把最大未知变成下一项可验证工作。</p>
       <div className="start-settings">
         <TextField label="项目名称" value={project.name} onChange={(name) => edit({ name })} />
-        <ChoiceGrid label="这次工作深度" choices={[{ id: "quick", title: "快速梳理", summary: "抓核心与下一步" }, { id: "standard", title: "标准设计", summary: "默认主干" }, { id: "deep", title: "深入检查", summary: "风险与证据优先" }]} selected={[project.depth]} onToggle={(value) => edit({ depth: value as ProjectState["depth"] })} single />
       </div>
       <div className="entry-grid">
-        <EntryCard number="01" title={hasProject ? "继续当前项目" : "开始一个新想法"} body={hasProject ? `上次停在 ${project.currentNodeId}，还有 ${issues.length} 项建议。` : "从一句不完整的动作、画面或题材开始。"} action={hasProject ? "继续" : "开始"} onClick={() => go(hasProject ? project.currentNodeId === "S0" ? recommendedNode(project) : project.currentNodeId : "A0")} />
+        <EntryCard number="01" title={hasProject ? "继续当前项目" : "开始一个新想法"} body={hasProject ? `当前有 ${issues.length} 项建议；先确定这次希望推进的结果。` : "从一句不完整的动作、画面或题材开始。"} action={hasProject ? "选择目标" : "开始"} onClick={() => go(hasProject ? "S1" : "A0")} />
         <EntryCard number="02" title="诊断我卡在哪里" body="按当前缺口、风险和待复核状态推荐下一问。" action="开始诊断" onClick={() => go(recommendedNode(project))} disabled={!hasProject} />
         <EntryCard number="03" title="录入一次试玩" body="把实际观察对照原假设，让证据回流到设计。" action="记录证据" onClick={() => go(project.hypothesis.supportSignal ? "I0" : "D3")} disabled={!hasProject} />
         <EntryCard number="04" title="只安排下一步" body="汇总未知、选择一号问题并形成最小工作路径。" action="形成路径" onClick={() => go(hasProject ? "D0" : "A0")} />
