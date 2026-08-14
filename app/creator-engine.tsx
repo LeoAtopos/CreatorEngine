@@ -25,7 +25,9 @@ import {
   makeId,
   migrateLegacyProject,
   normalizeProject,
+  recommendedNode,
   STORAGE_KEY,
+  targetForSessionGoal,
   type CompletionMode,
   type FeasibilityStatus,
   type ProjectState,
@@ -115,31 +117,6 @@ const completionLabels: Record<CompletionMode, string> = {
 function toggle(values: string[], value: string, max = Number.POSITIVE_INFINITY) {
   if (values.includes(value)) return values.filter((item) => item !== value);
   return values.length >= max ? [...values.slice(1), value] : [...values, value];
-}
-
-function recommendedNode(project: ProjectState) {
-  const issues = deriveIssues(project);
-  return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? issues[0]?.nodeId ?? "D8";
-}
-
-function targetForSessionGoal(project: ProjectState) {
-  const issues = deriveIssues(project);
-  const firstIssueIn = (prefixes: string[]) => issues.find((issue) => prefixes.some((prefix) => issue.nodeId.startsWith(prefix)))?.nodeId;
-
-  switch (project.sessionGoal) {
-    case "clarify":
-      return firstIssueIn(["A"]) ?? "A8";
-    case "structure":
-      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "B1";
-    case "judge":
-      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "C1";
-    case "act":
-      return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? "D0";
-    case "continue":
-      return recommendedNode(project);
-    default:
-      return "A0";
-  }
 }
 
 function validForNode(project: ProjectState, nodeId: string) {

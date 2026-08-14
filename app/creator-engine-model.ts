@@ -362,6 +362,31 @@ export function deriveIssues(project: ProjectState): DesignIssue[] {
   return issues;
 }
 
+export function recommendedNode(project: ProjectState) {
+  const issues = deriveIssues(project);
+  return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? issues[0]?.nodeId ?? "D8";
+}
+
+export function targetForSessionGoal(project: ProjectState) {
+  const issues = deriveIssues(project);
+  const firstIssueIn = (prefixes: string[]) => issues.find((issue) => prefixes.some((prefix) => issue.nodeId.startsWith(prefix)))?.nodeId;
+
+  switch (project.sessionGoal) {
+    case "clarify":
+      return firstIssueIn(["A"]) ?? "A8";
+    case "structure":
+      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "B1";
+    case "judge":
+      return firstIssueIn(["A"]) ?? firstIssueIn(["B"]) ?? "C1";
+    case "act":
+      return issues.find((issue) => issue.severity === "blocking")?.nodeId ?? "D0";
+    case "continue":
+      return recommendedNode(project);
+    default:
+      return "A0";
+  }
+}
+
 export function buildMarkdown(project: ProjectState) {
   const pillarLines = project.pillars
     .filter((pillar) => pillar.name.trim())

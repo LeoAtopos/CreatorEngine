@@ -6,6 +6,7 @@ import {
   deriveIssues,
   emptyProject,
   migrateLegacyProject,
+  targetForSessionGoal,
 } from "../app/creator-engine-model.ts";
 import { nodes } from "../app/creator-engine-nodes.ts";
 
@@ -45,6 +46,25 @@ test("legacy v2 content migrates without turning design dimensions into project 
   assert.equal(project.dimensions.mechanics, "堆叠与调整");
   assert.equal(project.pillars.filter((pillar) => pillar.name).length, 0);
   assert.ok(project.reviewNodes.includes("A3"));
+});
+
+test("the session goal router respects prerequisites and then enters the requested phase", () => {
+  const project = emptyProject();
+  project.sessionGoal = "structure";
+  assert.equal(targetForSessionGoal(project), "A0");
+
+  project.rawIdea = "在不断变化的空间里建立一条安全路线";
+  project.spark = "路线会被过去的选择永久改变";
+  project.coreVerb = "规划";
+  project.coreObject = "路线";
+  project.shortGoal = "抵达下一个安全点";
+  project.outcomeState = "路线和风险分布发生变化";
+  project.constraint = "每次选择都会封闭另一条路线";
+  project.experiences = ["策略"];
+  assert.equal(targetForSessionGoal(project), "B1");
+
+  project.sessionGoal = "act";
+  assert.equal(targetForSessionGoal(project), "D0");
 });
 
 test("the rules engine surfaces blocking gaps and turns a concept into an export", () => {
