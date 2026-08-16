@@ -1,49 +1,46 @@
-# Design QA
+# CreatorEngine five-step flow QA
 
-- Source visual truth: `C:\Users\leoni\.codex\generated_images\019ff19c-0879-7210-bf90-355515c6f484\exec-c7821f78-7808-43c2-9574-077d6bbb9166.png`
-- Implementation screenshot: `C:\Users\leoni\Documents\GitHub\CreatorEngine\implementation-origin.png`
-- Comparison image: `C:\Users\leoni\Documents\GitHub\CreatorEngine\design-comparison.png`
-- Viewport: 1440 × 1024 CSS px, device scale 1
-- Source pixels: normalized to 1440 × 1024 from the generated reference
-- Implementation pixels: 1440 × 1024
-- State: origin comparison, first pair, side panels collapsed
+Source visual truth: `C:\Users\leoni\Downloads\创作引擎.png` plus the five annotated UI screenshots supplied in the task.
 
-## Full-view comparison evidence
+Implementation evidence:
 
-The implementation preserves the selected reference's defining hierarchy: one narrow centered conversation column, two large plain choices, inline disclosure controls, quiet secondary actions, a single primary button, warm white surface, and generous negative space. The requested deviation is visible but intentionally peripheral: collapsed path/state launchers sit at the far left and right edges.
+- `C:\Users\leoni\Documents\GitHub\CreatorEngine\implementation-sentence-tabs.png` — merged three-sentence tabs and live sentence.
+- `C:\Users\leoni\Documents\GitHub\CreatorEngine\implementation-summary-read.png` — editable design-summary read view.
+- `C:\Users\leoni\Documents\GitHub\CreatorEngine\implementation-player-mobile.png` — player-side sentence builder at mobile width.
 
-## Focused region comparison evidence
+## Findings
 
-The central comparison region was checked at full resolution. Choice typography, one-pixel separators, radio affordances, arrow disclosure buttons, disabled primary state, and supporting-copy contrast are readable without an additional crop.
+- No actionable layout or interaction findings remain.
+- The flow has five steps: initial idea, three sentences, four pillars, player-side conception, and summary.
+- All redundant purpose/helper copy has been removed from input pages.
+- Every input placeholder is exactly “请输入...”; no input says “可留空”.
+- Empty fields never block navigation and remain marked “空” in the step rail.
+- The three core sentences are merged into tabs with the requested titles and a live complete-sentence preview.
+- Player-side conception is expressed as three fill-in sentences with live previews.
+- References contain six three-sentence examples, five detailed four-pillar examples, and five detailed player-side examples.
+- The summary has an Edit mode that exposes the complete project on one page and writes directly to the same saved data.
 
-## Required fidelity surfaces
+## Visual and accessibility checks
 
-- Fonts and typography: modern Chinese sans-serif fallback stack; heading, body, and microcopy hierarchy match the restrained reference.
-- Spacing and layout rhythm: centered 690 px content column, large top offset, 82 px choice rows, and ample whitespace match the source composition.
-- Colors and visual tokens: warm near-white, near-black, muted gray, and a restrained green selected state; no decorative gradients or shadows.
-- Image quality and assets: this interface uses no raster imagery. Phosphor icons are used for all functional icons; there are no handcrafted icon approximations.
-- Copy and content: comparison language remains brief; definitions and diagnostic prompts are hidden until disclosure.
+- All visible UI text is at least 14 px.
+- Desktop forms use a focused 760 px content column.
+- At 390 × 844 the document has no page-level horizontal overflow; long tab rows remain independently scrollable.
+- Inputs have semantic labels, tabs expose selected state, the modal has dialog semantics and Escape/backdrop/button close behavior, and focus rings remain visible.
 
-## Interaction verification
+## Interactions tested
 
-- Path panel opens and closes from the left edge.
-- Current-state panel opens and closes from the right edge.
-- Both panels can be open independently or together.
-- Either comparison option can be selected.
-- Explanations expand and collapse independently.
-- A selected option advances to the next challenger.
-- Mobile viewport retains both side-panel launchers.
-- Fresh-page browser console: no errors.
+- Navigate forward with empty inputs and revisit any step from the rail.
+- Fill a sentence slot and confirm the generated sentence updates immediately.
+- Switch all three core-sentence tabs and all three player-side tabs.
+- Open references and count at least five examples in each detailed framework.
+- Enter summary Edit mode, modify a sentence slot, finish editing, and confirm the read view updates.
+- Verify the only placeholder value across summary Edit mode is “请输入...”.
+- Verify desktop and mobile layouts and a 14 px minimum visible font size.
 
-## Comparison history
+## Automated checks
 
-- Initial implementation matched the selected minimal comparison direction but lacked the user-requested peripheral context.
-- Added two default-collapsed drawers, then verified that their expanded state does not alter or replace the central conversation flow.
-- Replaced all persistent card and dashboard treatment with plain text, separators, and progressive disclosure.
-- No actionable P0, P1, or P2 differences remain. The narrower implementation content column is an acceptable intentional refinement of the same hierarchy.
-
-## Follow-up polish
-
-- P3: The edge drawer launchers could gain a short hover label if icon discoverability proves weak in user testing.
+- ESLint passed.
+- Production build passed.
+- Model and server-render tests passed.
 
 final result: passed

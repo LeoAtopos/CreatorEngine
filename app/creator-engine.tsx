@@ -1,174 +1,136 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowCounterClockwise,
+  ArrowLeft,
   ArrowRight,
-  CaretDown,
-  CaretLeft,
   Check,
   Copy,
   DownloadSimple,
   FloppyDisk,
-  Lightbulb,
-  Path,
-  SidebarSimple,
-  WarningCircle,
+  PencilSimple,
   X,
 } from "@phosphor-icons/react";
 import {
   buildMarkdown,
-  deriveConceptSentence,
-  deriveIssues,
   emptyProject,
+  experienceSentence,
+  gameplaySentence,
+  hasStepContent,
+  hypothesisSentence,
   LEGACY_STORAGE_KEY,
-  makeId,
   migrateLegacyProject,
   normalizeProject,
-  recommendedNode,
   STORAGE_KEY,
-  targetForSessionGoal,
-  type CompletionMode,
-  type FeasibilityStatus,
   type ProjectState,
+  type TetradKey,
 } from "./creator-engine-model";
-import {
-  nodeMap,
-  nodes,
-  nodesForPhase,
-  phases,
-  previousSequentialNode,
-  nextSequentialNode,
-  type NodeMeta,
-} from "./creator-engine-nodes";
+import { creationSteps, nextStep, previousStep, stepMap, type StepId } from "./creator-engine-nodes";
 
-type Choice = { id: string; title: string; summary?: string; prompt?: string; examples?: string[] };
+type SentenceTab = "gameplay" | "experience" | "hypothesis";
+type PlayerTab = "firstLook" | "firstTen" | "arc";
 
-const fantasies: Choice[] = [
-  { id: "identity", title: "成为另一种人", summary: "体验现实中难以拥有的身份与职责。", prompt: "我就是那个 ______ 的人。" },
-  { id: "mastery", title: "掌握困难能力", summary: "从笨拙到熟练，获得理解与控制。", prompt: "我逐渐掌握了 ______。" },
-  { id: "power", title: "拥有力量与影响", summary: "看见自己的决定改变局面。", prompt: "我有能力 ______。" },
-  { id: "discovery", title: "发现未知规律", summary: "由好奇驱动，拼出世界背后的真相。", prompt: "我正在发现 ______。" },
-  { id: "creation", title: "创造与表达", summary: "让选择变成独特、可见的结果。", prompt: "这是我亲手创造的 ______。" },
-  { id: "care", title: "照顾与建立关系", summary: "通过保护、理解和陪伴形成联结。", prompt: "我正在照顾并理解 ______。" },
-  { id: "social", title: "与他人共同经历", summary: "合作、竞争或沟通本身构成意义。", prompt: "我和其他人正在一起 ______。" },
-  { id: "transformation", title: "突破限制完成改变", summary: "在困境中逐步实现逆转和成长。", prompt: "我从 ______ 变成了 ______。" },
-  { id: "pure-action", title: "身份不是重点", summary: "主要价值来自纯操作、观察或系统实验。", prompt: "玩家主要在享受 ______ 本身。" },
+const tetradMeta: Array<{ id: TetradKey; label: string }> = [
+  { id: "narrative", label: "叙事" },
+  { id: "mechanics", label: "机制" },
+  { id: "aesthetics", label: "美学" },
+  { id: "technology", label: "技术" },
 ];
 
-const sparkChoices: Choice[] = [
-  { id: "action", title: "动作与手感" },
-  { id: "identity", title: "玩家身份" },
-  { id: "relationship", title: "人与人的关系" },
-  { id: "world", title: "世界条件" },
-  { id: "emotion", title: "情绪时刻" },
-  { id: "question", title: "值得追问的问题" },
-  { id: "other", title: "其他" },
+const sentenceMeta: Array<{ id: SentenceTab; label: string; title: string }> = [
+  { id: "gameplay", label: "什么游戏", title: "一句话说明：什么游戏？" },
+  { id: "experience", label: "什么体验", title: "一句话：什么体验" },
+  { id: "hypothesis", label: "如何验证", title: "一句话：如何验证" },
 ];
 
-const experienceChoices = ["掌控", "挑战", "发现", "表达", "幻想", "叙事", "联结", "好奇", "紧张", "释然", "成就", "反思"];
-const constraintChoices = ["资源", "时间", "空间", "信息", "风险", "关系", "规则反转", "不可逆结果", "操作难度"];
-const motivationChoices = ["破坏", "刺激", "竞争", "社群", "挑战", "策略", "完成", "力量", "幻想", "故事", "设计", "发现"];
-const genreChoices = ["动作", "冒险", "角色扮演", "策略", "模拟经营", "解谜", "生存", "叙事", "聚会/社交", "沙盒/创造"];
-const differentiationChoices = ["不同寻常的规则", "独特核心操作", "不同身份/视角", "新的玩家关系", "强烈世界条件", "不同节奏", "意外的类型结合", "媒介/技术能力"];
-const riskChoices = ["体验", "操作", "系统", "技术", "内容", "生产", "受众", "价值/安全"];
-const decisionChoices = ["采用当前方向", "暂作工作假设", "并行验证两个方向", "信息不足，暂不决定", "放弃这一方向"];
-const prototypeChoices = ["Role / 价值理解", "Look & Feel / 操作感受", "Implementation / 技术可行", "系统模拟", "内容管线", "受众访谈"];
-const sessionGoalChoices: Choice[] = [
-  { id: "clarify", title: "把想法说清", summary: "形成可继续设计的概念简报" },
-  { id: "structure", title: "补全玩法结构", summary: "建立支柱、循环、选择与体验因果" },
-  { id: "judge", title: "判断一个方案", summary: "用参考、约束和风险做当前取舍" },
-  { id: "act", title: "制定工作路径", summary: "把最大未知变成一轮最小验证" },
-  { id: "continue", title: "继续上次", summary: "由当前缺口与待复核项推荐下一问" },
+const playerMeta: Array<{ id: PlayerTab; label: string }> = [
+  { id: "firstLook", label: "第一句话" },
+  { id: "firstTen", label: "第二句话" },
+  { id: "arc", label: "第三句话" },
 ];
-const feasibilityAxes = [
-  ["experience", "体验", "玩家是否可能获得目标感受"],
-  ["system", "系统", "规则能否形成预期动态"],
-  ["technology", "技术", "核心技术与目标设备是否可行"],
-  ["content", "内容", "内容规模与生产速度是否匹配"],
-  ["production", "生产", "团队、时间与依赖是否清楚"],
-  ["reach", "触达", "目标玩家是否能理解并找到它"],
-] as const;
 
-const dimensionMeta = [
-  ["narrative", "叙事", "玩家是谁、处于什么情境，意义如何显现？"],
-  ["mechanics", "机制", "规则如何制造选择、反馈与成长？"],
-  ["aesthetics", "美学", "画面、声音、动效和交互形成什么感受？"],
-  ["technology", "技术", "哪些能力是体验成立的必要条件？"],
-] as const;
-
-const formalMeta = [
-  ["players", "玩家/作用主体", "谁在行动，是否有不同角色？"],
-  ["procedures", "程序", "轮到玩家时可以怎样行动？"],
-  ["rules", "关键规则", "哪些规则改变行动结果？"],
-  ["resources", "资源", "哪些东西会获得、消耗或转换？"],
-  ["conflict", "冲突", "什么阻止玩家直接达成目标？"],
-  ["boundaries", "边界", "何时开始、结束或转入下一阶段？"],
-  ["outcomes", "结果", "成功、失败或持续状态如何变化？"],
-] as const;
-
-const completionLabels: Record<CompletionMode, string> = {
-  answered: "已决定",
-  assumption: "暂作假设",
-  not_applicable: "不适用",
-  deferred: "已延期",
+const references: Partial<Record<StepId, { title: string; body: ReactNode }>> = {
+  idea: {
+    title: "最初想法参考",
+    body: <ExampleList items={[
+      ["动作火花", "玩家用一根会弯曲的钓线，在风暴里的高楼之间摆荡和救人。"],
+      ["画面火花", "一座每天清晨都会重组街道的城市，居民靠在门上留下粉笔记号生活。"],
+      ["关系火花", "两名玩家看见不同的世界规则，只能靠描述帮助对方通过同一空间。"],
+      ["世界条件", "所有物品一旦被命名就会永久改变用途，玩家必须谨慎使用语言。"],
+      ["情绪火花", "玩家照料一只注定会离开的生物，告别越近，它学会的能力越强。"],
+      ["结构火花", "每次失败都会让关卡更容易，却也会让最终结局失去一部分可能性。"],
+    ]} />,
+  },
+  sentences: {
+    title: "三句话参考",
+    body: <div className="detailed-examples">
+      <DetailedExample title="《超级马里奥兄弟》">
+        <p><b>什么游戏：</b>玩家作为营救公主的马里奥，反复奔跑、跳跃和踩踏敌人，以穿越关卡抵达终点；但有限时间、地形与敌人持续制造失误风险。</p>
+        <p><b>什么体验：</b>为喜欢即时挑战的玩家提供从试探到熟练掌控的成就感，主要通过清晰的跳跃反馈与关卡节奏，而不是依赖数值养成。</p>
+        <p><b>如何验证：</b>如果让障碍提前可见并保持跳跃反馈稳定，那么玩家会在失败后调整起跳位置，进而感到自己正在变熟练；证据是玩家能解释失败并在三次内改变策略。</p>
+      </DetailedExample>
+      <DetailedExample title="《俄罗斯方块》">
+        <p><b>什么游戏：</b>玩家反复旋转和放置下落方块，以填满并消除横行；但空间持续缩小且速度不断加快。</p>
+        <p><b>什么体验：</b>为短时游玩的玩家提供秩序建立与压力升级的专注感，主要通过形状预测和空间取舍，而不是依赖故事奖励。</p>
+        <p><b>如何验证：</b>如果让玩家提前看见下一个方块，那么他们会为未来形状预留空间，进而感到计划正在生效；证据是高分玩家明显减少随机填缝。</p>
+      </DetailedExample>
+      <DetailedExample title="《我的世界》">
+        <p><b>什么游戏：</b>玩家作为方块世界的探索者，反复采集、合成和建造，以实现自定目标；但资源、昼夜和危险生物限制行动。</p>
+        <p><b>什么体验：</b>为喜欢创造和探索的玩家提供“这是我的世界”的自主感，主要通过可组合材料和开放目标，而不是依赖固定任务链。</p>
+        <p><b>如何验证：</b>如果材料规则足够一致，那么玩家会自发组合系统并设定个人工程，进而感到拥有创造权；证据是玩家离开教程后仍主动制定并完成目标。</p>
+      </DetailedExample>
+      <DetailedExample title="《星露谷物语》">
+        <p><b>什么游戏：</b>玩家作为继承农场的新居民，反复种植、经营和交往，以重建生活与社区；但每日时间、体力和季节迫使玩家取舍。</p>
+        <p><b>什么体验：</b>为偏好舒缓成长的玩家提供可掌控生活的安定感，主要通过日程安排与关系积累，而不是依赖高压竞争。</p>
+        <p><b>如何验证：</b>如果每天都给出多个有意义的小目标，那么玩家会形成自己的生活节奏，进而感到日常值得期待；证据是玩家能说明明天最想先做的事。</p>
+      </DetailedExample>
+      <DetailedExample title="《Among Us》">
+        <p><b>什么游戏：</b>玩家作为船员或内鬼，反复完成任务、观察和讨论，以找出内鬼或隐藏身份；但信息不完整且发言可能欺骗。</p>
+        <p><b>什么体验：</b>为朋友群体提供怀疑、表演和反转的社交戏剧，主要通过不对称信息与公开讨论，而不是依赖复杂操作。</p>
+        <p><b>如何验证：</b>如果目击信息始终不完整，那么玩家会主动结盟、撒谎和质询，进而感到每局都产生独特故事；证据是结算后玩家仍会复盘关键发言。</p>
+      </DetailedExample>
+      <DetailedExample title="《健身环大冒险》">
+        <p><b>什么游戏：</b>玩家作为冒险者，反复用身体动作移动和战斗，以推进旅程；但体力和动作标准限制连续输出。</p>
+        <p><b>什么体验：</b>为想轻松运动的玩家提供“我完成了一次冒险”的积极感，主要通过动作映射和即时鼓励，而不是依赖枯燥计数。</p>
+        <p><b>如何验证：</b>如果运动动作被包装成可见的战斗效果，那么玩家会为完成关卡主动坚持动作，进而感到运动有目标；证据是玩家在疲劳时仍选择完成当前战斗。</p>
+      </DetailedExample>
+    </div>,
+  },
+  tetrad: {
+    title: "游戏设计四大支柱参考",
+    body: <div className="detailed-examples">
+      <DetailedExample title="《超级马里奥兄弟》"><p><b>叙事：</b>穿越蘑菇王国营救公主，给前进明确方向。</p><p><b>机制：</b>奔跑、跳跃、踩踏和强化状态构成核心循环。</p><p><b>美学：</b>高对比角色、积木式地形与清脆音效让危险可读。</p><p><b>技术：</b>稳定横向卷轴、碰撞和输入响应保证跳跃可信。</p></DetailedExample>
+      <DetailedExample title="《塞尔达传说：旷野之息》"><p><b>叙事：</b>失忆英雄在开放世界中恢复记忆并对抗灾厄。</p><p><b>机制：</b>攀爬、滑翔、物理与元素反应支持多解法。</p><p><b>美学：</b>远景地标、天气和留白引导自主探索。</p><p><b>技术：</b>统一物理与化学系统让不同物件产生可预测组合。</p></DetailedExample>
+      <DetailedExample title="《星露谷物语》"><p><b>叙事：</b>离开公司生活，在小镇重新建立归属。</p><p><b>机制：</b>农耕、采集、关系与时间管理彼此争夺每日资源。</p><p><b>美学：</b>像素季节变化和柔和音乐营造亲密日常。</p><p><b>技术：</b>持久世界状态、日历和大量事件支撑长期生活模拟。</p></DetailedExample>
+      <DetailedExample title="《Portal 2》"><p><b>叙事：</b>被困实验设施的玩家在人工智能监视下逃脱。</p><p><b>机制：</b>用入口和出口重构空间、速度与因果。</p><p><b>美学：</b>洁净实验室与破败后台对照，并用视觉语言标示可交互表面。</p><p><b>技术：</b>无缝传送、物理保持和镜头处理保证空间谜题成立。</p></DetailedExample>
+      <DetailedExample title="《Journey》"><p><b>叙事：</b>无名旅人朝远方山峰前进，与陌生人短暂同行。</p><p><b>机制：</b>移动、滑行、歌声与有限飞行形成无语言协作。</p><p><b>美学：</b>沙海、色彩和音乐随旅程推进表达情绪。</p><p><b>技术：</b>无缝匿名匹配与极简通信保护陌生相遇的纯粹性。</p></DetailedExample>
+    </div>,
+  },
+  player: {
+    title: "玩家测构思参考",
+    body: <div className="detailed-examples">
+      <DetailedExample title="《超级马里奥兄弟》"><p><b>第一句：</b>玩家看到水管、蘑菇和马里奥，会认为这是平台跳跃游戏，并期待轻快闯关。</p><p><b>第二句：</b>十分钟内，玩家会兑现跳跃闯关预期，还能获得发现隐藏砖块与成长状态的惊喜，并产生抵达下一座城堡的目标。</p><p><b>第三句：</b>中后期变化来自移动平台、水下关和更强敌人，结尾获得熟练穿越高压关卡的终极体验。</p></DetailedExample>
+      <DetailedExample title="《俄罗斯方块》"><p><b>第一句：</b>玩家看到几何方块和井口，会认为这是空间整理益智游戏，并期待消除带来的整洁感。</p><p><b>第二句：</b>十分钟内，玩家会兑现拼合消除预期，还会获得为长条预留空间的策略感，并产生刷新最高分的目标。</p><p><b>第三句：</b>中后期变化来自速度提升与堆叠压力，结尾获得在失控边缘维持秩序的终极体验。</p></DetailedExample>
+      <DetailedExample title="《我的世界》"><p><b>第一句：</b>玩家看到方块世界，会认为这是建造与生存游戏，并联想到乐高式自由创造。</p><p><b>第二句：</b>十分钟内，玩家会获得采集与搭建预期，还会经历夜晚降临带来的生存压力，并产生建造安全住所的目标。</p><p><b>第三句：</b>中后期变化来自稀有材料、自动化与异世界，结尾获得“这个世界由我塑造”的终极体验。</p></DetailedExample>
+      <DetailedExample title="《星露谷物语》"><p><b>第一句：</b>玩家看到农场与小镇居民，会认为这是轻松经营生活游戏，并期待治愈与成长。</p><p><b>第二句：</b>十分钟内，玩家会获得播种经营预期，还会发现时间和体力带来的日程取舍，并产生迎接第一次收获的目标。</p><p><b>第三句：</b>中后期变化来自季节、关系和社区工程，结尾获得在小镇建立归属的终极体验。</p></DetailedExample>
+      <DetailedExample title="《Among Us》"><p><b>第一句：</b>玩家看到太空船员和任务场景，会认为这是多人合作游戏，并期待共同修复飞船。</p><p><b>第二句：</b>十分钟内，玩家不会只获得合作预期，而会获得互相怀疑与身份表演的独特体验，并产生证明自己或操纵投票的目标。</p><p><b>第三句：</b>中后期变化来自人员减少和证词累积，结尾获得真相揭晓与集体复盘的终极体验。</p></DetailedExample>
+    </div>,
+  },
 };
-
-function toggle(values: string[], value: string, max = Number.POSITIVE_INFINITY) {
-  if (values.includes(value)) return values.filter((item) => item !== value);
-  return values.length >= max ? [...values.slice(1), value] : [...values, value];
-}
-
-function validForNode(project: ProjectState, nodeId: string) {
-  switch (nodeId) {
-    case "S1": return Boolean(project.sessionGoal);
-    case "A0": return Boolean(project.rawIdea.trim());
-    case "A1": return Boolean(project.sparkCategory && project.spark.trim());
-    case "A2": return Boolean(project.fantasyId && project.fantasyStatement.trim());
-    case "A3": return Boolean(project.coreVerb.trim() && project.coreObject.trim());
-    case "A4": return Boolean((project.shortGoal.trim() || project.longGoal.trim()) && project.outcomeState.trim());
-    case "A5": return Boolean(project.constraintType && project.constraint.trim());
-    case "A6": return Boolean(project.conceptSentence.trim());
-    case "A7": return Boolean(project.experiences.length && project.experienceMoment.trim() && project.observableSignal.trim());
-    case "B1": return project.pillars.filter((pillar) => pillar.name.trim() && pillar.promise.trim() && pillar.doNot.trim()).length >= 2;
-    case "B2": return Object.values(project.atomicLoop).every((value) => value.trim());
-    case "B3": return Boolean(project.coreDecision.moment.trim() && project.coreDecision.optionA.trim() && project.coreDecision.optionB.trim());
-    case "B6": return Boolean(project.formal.players.trim() && project.formal.procedures.trim() && project.formal.rules.trim() && project.formal.outcomes.trim());
-    case "B7": return Boolean(project.causal.design.trim() && project.causal.dynamic.trim() && project.causal.experience.trim() && project.causal.rationale.trim());
-    case "B8": return Object.values(project.dimensions).every((value) => value.trim());
-    case "C1": return Boolean(project.audienceMotivations.length && project.audienceContext.trim());
-    case "C2": return Boolean((project.genres.length || project.genreCustom.trim()) && project.referenceTitle.trim() && project.referenceUse.trim());
-    case "C3": return Boolean(project.differentiationType && project.differentiation.trim());
-    case "C4": return Boolean(project.constraints.platform.trim() && project.constraints.team.trim() && project.constraints.time.trim());
-    case "C5": return feasibilityAxes.every(([id]) => project.feasibility[id]);
-    case "C7": return Boolean(project.topRisk.type && project.topRisk.statement.trim() && project.topRisk.impact && project.topRisk.uncertainty);
-    case "C9": return Boolean(project.decision.choice && project.decision.rationale.trim() && project.decision.falsifier.trim());
-    case "D0": return project.openQuestions.some((question) => question.trim());
-    case "D2": return Boolean(project.nextQuestion.trim() && project.changeIfAnswered.trim());
-    case "D3": return Object.values(project.hypothesis).every((value) => value.trim());
-    case "D4": return Boolean(project.prototype.type && project.prototype.mustBuild.trim() && project.prototype.omit.trim() && project.prototype.timebox.trim());
-    case "D5": return Boolean(project.testPlan.observe.trim() && project.testPlan.rounds.trim() && project.testPlan.stopCondition.trim());
-    case "D6": return project.tasks.some((task) => task.action.trim() && task.deliverable.trim() && task.doneDefinition.trim());
-    case "I0": return project.observations.some((observation) => observation.fact.trim());
-    case "I1": return Boolean(project.evidenceAssessment.trim());
-    case "I2": return Boolean(project.iterationDecision && project.iterationReason.trim());
-    case "I3": return project.reviewNodes.length > 0;
-    default: return true;
-  }
-}
 
 export function CreatorEngine() {
   const [project, setProject] = useState<ProjectState>(() => emptyProject());
   const [hydrated, setHydrated] = useState(false);
-  const [pathOpen, setPathOpen] = useState(false);
-  const [stateOpen, setStateOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [referenceOpen, setReferenceOpen] = useState<StepId | null>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
       try {
-        const current = window.localStorage.getItem(STORAGE_KEY);
+        const saved = window.localStorage.getItem(STORAGE_KEY);
         const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-        if (current) setProject(normalizeProject(JSON.parse(current)));
+        if (saved) setProject(normalizeProject(JSON.parse(saved)));
         else if (legacy) setProject(migrateLegacyProject(JSON.parse(legacy)));
       } catch {
         setProject(emptyProject());
@@ -184,636 +146,241 @@ export function CreatorEngine() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
   }, [hydrated, project]);
 
-  const currentNode = nodeMap[project.currentNodeId] ?? nodeMap.S0;
-  const issues = useMemo(() => deriveIssues(project), [project]);
-  const mainNodes = nodes.filter((node) => node.phase !== "start" && !node.checkpoint);
-  const completeCount = mainNodes.filter((node) => project.statuses[node.id]).length;
-  const progress = Math.round((completeCount / mainNodes.length) * 100);
+  const current = stepMap[project.currentStep];
+  const progress = project.currentStep === "welcome" ? 0 : Math.round((current.index / creationSteps.length) * 100);
 
-  function edit(updater: Partial<ProjectState> | ((current: ProjectState) => ProjectState)) {
-    setProject((current) => {
-      const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
-      const statuses = { ...next.statuses };
-      const reviewNodes = new Set(next.reviewNodes);
-      if (statuses[current.currentNodeId]) {
-        delete statuses[current.currentNodeId];
-        const currentIndex = nodes.findIndex((node) => node.id === current.currentNodeId);
-        nodes.slice(currentIndex + 1).forEach((node) => {
-          if (current.statuses[node.id]) reviewNodes.add(node.id);
-        });
-      }
-      return { ...next, statuses, reviewNodes: [...reviewNodes], updatedAt: new Date().toISOString() };
-    });
+  function edit(updater: (current: ProjectState) => ProjectState) {
+    setProject((currentProject) => ({ ...updater(currentProject), updatedAt: new Date().toISOString() }));
   }
 
-  function go(nodeId: string) {
-    setProject((current) => ({ ...current, currentNodeId: nodeId, updatedAt: new Date().toISOString() }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function complete(mode: CompletionMode = "answered", target?: string) {
-    setProject((current) => ({
-      ...current,
-      currentNodeId: target ?? nextSequentialNode(current.currentNodeId),
-      statuses: { ...current.statuses, [current.currentNodeId]: mode },
-      reviewNodes: current.reviewNodes.filter((id) => id !== current.currentNodeId),
-      evidenceStatus: current.currentNodeId === "D3" && current.evidenceStatus === "idea" ? "hypothesis" : current.evidenceStatus,
-      updatedAt: new Date().toISOString(),
-    }));
+  function go(step: StepId) {
+    setProject((currentProject) => ({ ...currentProject, currentStep: step, updatedAt: new Date().toISOString() }));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function restart() {
-    if (!window.confirm("重新开始会清除当前设备上的项目内容，确定继续吗？")) return;
-    const fresh = emptyProject();
+    if (!window.confirm("重新开始会清除这台设备上当前项目的全部填写内容，确定继续吗？")) return;
     window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
-    setProject(fresh);
+    setProject(emptyProject());
   }
 
-  const phaseIndex = phases.findIndex((phase) => phase.id === currentNode.phase);
-
-  return (
-    <div className="app-shell dialogue-workbench">
-      <header className="topbar">
-        <button className="brand-button" type="button" onClick={() => go("S0")} aria-label="返回项目入口">
-          <span className="brand-mark">CE</span>
-          <span><strong>创作引擎</strong><small>{project.name}</small></span>
-        </button>
-        <div className="top-progress" aria-label={`主干完成 ${progress}%`}>
-          <span>{String(Math.max(1, phaseIndex + 1)).padStart(2, "0")}</span>
-          <strong>{currentNode.short}</strong>
-          <span className="stage-name">· {progress}% 主干</span>
-        </div>
-        <div className="top-actions">
-          <span className="save-status"><FloppyDisk size={13} /> {hydrated ? "本地自动保存" : "读取中"}</span>
-          <button className="restart-button" type="button" onClick={restart}><ArrowCounterClockwise size={14} /><span>重新开始</span></button>
-        </div>
-      </header>
-
-      <button className={`side-toggle left ${pathOpen ? "open" : ""}`} type="button" aria-label={pathOpen ? "收起设计路径" : "展开设计路径"} aria-expanded={pathOpen} onClick={() => setPathOpen((value) => !value)}>
-        {pathOpen ? <CaretLeft size={17} /> : <Path size={17} />}
-      </button>
-      <button className={`side-toggle right ${stateOpen ? "open" : ""}`} type="button" aria-label={stateOpen ? "收起当前设计状态" : "展开当前设计状态"} aria-expanded={stateOpen} onClick={() => setStateOpen((value) => !value)}>
-        {stateOpen ? <X size={16} /> : <SidebarSimple size={17} />}
-      </button>
-
-      <PathPanel project={project} currentNode={currentNode} open={pathOpen} onClose={() => setPathOpen(false)} onGo={go} />
-      <StatePanel project={project} issues={issues} progress={progress} open={stateOpen} onClose={() => setStateOpen(false)} onGo={go} />
-
-      <main className={`conversation node-conversation ${currentNode.checkpoint ? "wide" : ""}`}>
-        <NodeRenderer
-          project={project}
-          node={currentNode}
-          issues={issues}
-          edit={edit}
-          go={go}
-          complete={complete}
-        />
-      </main>
-    </div>
-  );
-}
-
-function PathPanel({ project, currentNode, open, onClose, onGo }: { project: ProjectState; currentNode: NodeMeta; open: boolean; onClose: () => void; onGo: (id: string) => void }) {
-  return (
-    <aside className={`side-panel path-panel dialogue-path ${open ? "open" : ""}`} aria-hidden={!open}>
-      <div className="panel-header"><h2>设计路径</h2><button type="button" onClick={onClose} aria-label="关闭设计路径"><X size={16} /></button></div>
-      <div className="phase-path-list">
-        {phases.filter((phase) => phase.id !== "start").map((phase) => {
-          const phaseNodes = nodesForPhase(phase.id);
-          const done = phaseNodes.filter((node) => project.statuses[node.id]).length;
-          const active = currentNode.phase === phase.id;
-          return (
-            <section className={`phase-path ${active ? "active" : ""}`} key={phase.id}>
-              <div className="phase-path-heading">
-                <span>{phase.short}</span>
-                <strong>{phase.title}</strong>
-                <small>{done}/{phaseNodes.length}</small>
-              </div>
-              {(active || done > 0) && (
-                <ol>
-                  {phaseNodes.map((node) => (
-                    <li className={`${node.id === currentNode.id ? "current" : ""} ${project.statuses[node.id] ? "done" : ""}`} key={node.id}>
-                      <button type="button" onClick={() => { onGo(node.id); onClose(); }}>
-                        <span>{project.statuses[node.id] ? <Check size={10} /> : node.id}</span>{node.short}
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          );
-        })}
-      </div>
-    </aside>
-  );
-}
-
-function StatePanel({ project, issues, progress, open, onClose, onGo }: { project: ProjectState; issues: ReturnType<typeof deriveIssues>; progress: number; open: boolean; onClose: () => void; onGo: (id: string) => void }) {
-  const riskCount = issues.filter((issue) => issue.kind === "risk" || issue.severity === "blocking").length;
-  return (
-    <aside className={`side-panel state-panel dialogue-state ${open ? "open" : ""}`} aria-hidden={!open}>
-      <div className="panel-header"><h2>当前设计状态</h2><button type="button" onClick={onClose} aria-label="关闭当前设计状态"><X size={16} /></button></div>
-      <div className="status-metrics">
-        <div><strong>{progress}%</strong><span>主干</span></div>
-        <div><strong>{riskCount}</strong><span>高风险未知</span></div>
-        <div><strong>{project.reviewNodes.length}</strong><span>待复核</span></div>
-      </div>
-      <div className="state-progress"><span style={{ width: `${progress}%` }} /></div>
-      <StateItem label="原始火花" value={project.spark || project.rawIdea} />
-      <StateItem label="核心玩法句" value={project.conceptSentence} />
-      <StateItem label="目标体验" value={project.experiences.join(" · ")} />
-      <StateItem label="最大风险" value={project.topRisk.statement} />
-      <StateItem label="下一号问题" value={project.nextQuestion} />
-      {issues.length > 0 && (
-        <section className="issue-list">
-          <span>建议处理</span>
-          {issues.slice(0, 5).map((issue) => (
-            <button type="button" key={issue.id} onClick={() => { onGo(issue.nodeId); onClose(); }}>
-              <WarningCircle size={13} /><span>{issue.label}</span><small>{issue.nodeId}</small>
-            </button>
-          ))}
-        </section>
-      )}
-      <p className="local-note">所有内容只保存在这台设备。状态标签区分决定、假设、延期与证据。</p>
-    </aside>
-  );
-}
-
-function StateItem({ label, value }: { label: string; value: string }) {
-  return <div className="state-item"><span>{label}</span><p className={value ? "" : "empty"}>{value || "尚未形成"}</p></div>;
-}
-
-type RendererProps = {
-  project: ProjectState;
-  node: NodeMeta;
-  issues: ReturnType<typeof deriveIssues>;
-  edit: (updater: Partial<ProjectState> | ((current: ProjectState) => ProjectState)) => void;
-  go: (id: string) => void;
-  complete: (mode?: CompletionMode, target?: string) => void;
-};
-
-function NodeRenderer(props: RendererProps) {
-  const { project, node, issues, edit, go, complete } = props;
-  const valid = validForNode(project, node.id);
-  const wrap = (content: ReactNode, options?: { valid?: boolean; context?: string; noAlternative?: boolean; nextLabel?: string }) => (
-    <NodeFrame
-      node={node}
-      project={project}
-      valid={options?.valid ?? valid}
-      context={options?.context}
-      noAlternative={options?.noAlternative}
-      nextLabel={options?.nextLabel}
-      onBack={() => go(previousSequentialNode(node.id))}
-      onComplete={complete}
-    >{content}</NodeFrame>
-  );
-
-  switch (node.id) {
-    case "S0":
-      return <StartNode project={project} issues={issues} edit={edit} go={go} />;
-    case "S1": {
-      const targetNodeId = targetForSessionGoal(project);
-      const targetNode = nodeMap[targetNodeId];
-      return <NodeFrame
-        node={node}
-        project={project}
-        valid={valid}
-        context={issues.length ? `当前有 ${issues.length} 项缺口、风险或待复核内容。` : "当前没有自动发现的阻断项。"}
-        noAlternative
-        nextLabel={targetNode ? `前往 ${targetNode.short}` : "开始本次工作"}
-        onBack={() => go("S0")}
-        onComplete={(mode) => complete(mode, targetNodeId)}
-      >
-        <ChoiceGrid label="这次希望推进到什么结果？" choices={sessionGoalChoices} selected={[project.sessionGoal]} onToggle={(sessionGoal) => edit({ sessionGoal })} single />
-        <ChoiceGrid label="这次工作深度" choices={[{ id: "quick", title: "快速梳理", summary: "抓核心与下一步" }, { id: "standard", title: "标准设计", summary: "完成主干判断" }, { id: "deep", title: "深入检查", summary: "风险与证据优先" }]} selected={[project.depth]} onToggle={(depth) => edit({ depth: depth as ProjectState["depth"] })} single />
-        {project.sessionGoal && targetNode && <ReferenceHint title="CE 建议的起点"><p>目标是“{sessionGoalChoices.find((choice) => choice.id === project.sessionGoal)?.title}”。根据当前状态，先处理 {targetNode.id} · {targetNode.title}；完成后继续前往目标阶段。</p></ReferenceHint>}
-      </NodeFrame>;
-    }
-    case "A0":
-      return wrap(<>
-        <TextArea label="我的最初想法" value={project.rawIdea} onChange={(rawIdea) => edit({ rawIdea })} placeholder="例如：我想做一个需要不断把奇怪物件垒高的物理游戏……" large />
-        <ReferenceHint title="没有完整想法也可以开始">
-          <ul><li>我一直觉得反复 ______ 会很好玩。</li><li>我想让玩家体验成为 ______。</li><li>我脑中有一个画面：______。</li><li>如果把 ______ 的规则改成 ______ 会怎样？</li></ul>
-        </ReferenceHint>
-      </>, { noAlternative: true, context: "这里保存作者原话；后面的结构化改写不会覆盖它。", nextLabel: "找出不可失去的火花" });
-    case "A1":
-      return wrap(<>
-        <ChoiceGrid label="这份火花主要属于哪一类？" choices={sparkChoices} selected={[project.sparkCategory]} onToggle={(sparkCategory) => edit({ sparkCategory })} single />
-        <TextArea label="如果最后只能保住一件事，我最不愿失去……" value={project.spark} onChange={(spark) => edit({ spark })} placeholder="例如：物体已经摇摇欲坠，却还能被玩家救回来的那一刻。" />
-      </>, { context: project.rawIdea });
-    case "A2": {
-      const fantasy = fantasies.find((item) => item.id === project.fantasyId);
-      return wrap(<>
-        <ChoiceList choices={fantasies} selected={project.fantasyId} onSelect={(fantasyId) => edit({ fantasyId, fantasyStatement: "" })} />
-        {fantasy && <TextArea label={fantasy.prompt ?? "写成这个游戏专属的 Fantasy"} value={project.fantasyStatement} onChange={(fantasyStatement) => edit({ fantasyStatement })} placeholder="不要只复述选项，写出这个项目独有的愿望。" />}
-      </>, { context: project.spark });
-    }
-    case "A3":
-      return wrap(<>
-        <div className="sentence-fields two-columns">
-          <TextField label="主导动词" value={project.coreVerb} onChange={(coreVerb) => edit({ coreVerb })} placeholder="挑选、协商、建造……" />
-          <TextField label="动作对象" value={project.coreObject} onChange={(coreObject) => edit({ coreObject })} placeholder="遗物、路线、关系……" />
-        </div>
-        <TextField label="最多两个辅助动作（可选）" value={project.supportActions} onChange={(supportActions) => edit({ supportActions })} placeholder="旋转、观察" />
-        <InlineNotice>写玩家做什么，不写系统“拥有物理、开放世界、丰富剧情”。</InlineNotice>
-      </>, { context: project.fantasyStatement || project.spark });
-    case "A4":
-      return wrap(<div className="stack-fields">
-        <TextField label="短期目标或自定进展标准" value={project.shortGoal} onChange={(shortGoal) => edit({ shortGoal })} placeholder="完成一次稳定放置 / 找到一条新线索" />
-        <TextField label="长期方向（可选）" value={project.longGoal} onChange={(longGoal) => edit({ longGoal })} placeholder="重建整座纪念塔 / 改变社区关系" />
-        <TextArea label="做成以后，什么状态会发生可见变化？" value={project.outcomeState} onChange={(outcomeState) => edit({ outcomeState })} placeholder="玩家、世界、资源、关系或理解发生什么变化？" />
-      </div>, { context: [project.coreVerb, project.coreObject].join("") });
-    case "A5":
-      return wrap(<>
-        <ChoiceGrid label="张力主要来自" choices={constraintChoices.map((title) => ({ id: title, title }))} selected={[project.constraintType]} onToggle={(constraintType) => edit({ constraintType })} single />
-        <TextArea label={`玩家想${project.shortGoal || "达成目标"}，但必须……`} value={project.constraint} onChange={(constraint) => edit({ constraint })} placeholder="写会迫使玩家改变选择的约束，而不只是题材装饰。" />
-      </>, { context: `动作：${project.coreVerb}${project.coreObject}；目标：${project.shortGoal || project.longGoal}` });
-    case "A6":
-      return wrap(<>
-        <div className="generated-sentence">
-          <span>由前面答案组装的工作版本</span>
-          <p>{deriveConceptSentence(project)}</p>
-          <button type="button" onClick={() => edit({ conceptSentence: deriveConceptSentence(project) })}>采用这个版本</button>
-        </div>
-        <TextArea label="核心玩法句" value={project.conceptSentence} onChange={(conceptSentence) => edit({ conceptSentence })} placeholder="玩家作为［身份］，反复［动作］，以［目标］；但［约束］。" />
-      </>, { context: project.spark });
-    case "A7":
-      return wrap(<>
-        <ChoiceGrid label="最多选择两个主体验" choices={experienceChoices.map((title) => ({ id: title, title }))} selected={project.experiences} onToggle={(value) => edit({ experiences: toggle(project.experiences, value, 2) })} />
-        <div className="stack-fields">
-          <TextField label="明确不追求的体验" value={project.antiExperience} onChange={(antiExperience) => edit({ antiExperience })} placeholder="例如：不追求持续高压或无限刷取" />
-          <TextArea label="在什么具体时刻，希望玩家感到这些？" value={project.experienceMoment} onChange={(experienceMoment) => edit({ experienceMoment })} placeholder="当玩家救回即将倒塌的结构时，希望先紧张、再释然。" />
-          <TextArea label="什么可观察行为说明体验可能成立？" value={project.observableSignal} onChange={(observableSignal) => edit({ observableSignal })} placeholder="例如：玩家能解释调整理由，并主动尝试不同支撑策略。" />
-        </div>
-      </>, { context: project.conceptSentence });
-    case "A8":
-      return <Checkpoint node={node} title="概念已经从灵感变成可继续设计的工作版本。" items={[
-        ["不可失去的火花", project.spark], ["核心玩法句", project.conceptSentence], ["体验承诺", `${project.experiences.join(" · ")}｜${project.experienceMoment}`], ["仍待验证", project.observableSignal],
-      ]} primary="建立设计骨架" onPrimary={() => complete("answered", "B1")} actions={[
-        ["修改核心", () => go("A1")], ["先判断可行性", () => go("C4")], ["先安排下一步", () => go("D0")],
-      ]} />;
-    case "B1":
-      return wrap(<>
-        <div className="pillar-editor-list">
-          {project.pillars.map((pillar, index) => (
-            <section className="pillar-editor" key={pillar.id}>
-              <div className="editor-heading"><span>{String(index + 1).padStart(2, "0")}</span><strong>{pillar.name || "未命名支柱"}</strong>{project.pillars.length > 2 && <button type="button" aria-label="删除支柱" onClick={() => edit((current) => ({ ...current, pillars: current.pillars.filter((item) => item.id !== pillar.id) }))}>删除</button>}</div>
-              <TextField label="支柱名称" value={pillar.name} onChange={(value) => edit((current) => ({ ...current, pillars: current.pillars.map((item) => item.id === pillar.id ? { ...item, name: value } : item) }))} placeholder="例如：每次失误都必须可读" />
-              <TextField label="玩家承诺" value={pillar.promise} onChange={(value) => edit((current) => ({ ...current, pillars: current.pillars.map((item) => item.id === pillar.id ? { ...item, promise: value } : item) }))} placeholder="玩家会获得什么" />
-              <div className="two-columns">
-                <TextField label="我们会做" value={pillar.do} onChange={(value) => edit((current) => ({ ...current, pillars: current.pillars.map((item) => item.id === pillar.id ? { ...item, do: value } : item) }))} placeholder="设计决策" />
-                <TextField label="我们明确不做" value={pillar.doNot} onChange={(value) => edit((current) => ({ ...current, pillars: current.pillars.map((item) => item.id === pillar.id ? { ...item, doNot: value } : item) }))} placeholder="范围边界" />
-              </div>
-              <TextField label="怎样看出成立" value={pillar.proof} onChange={(value) => edit((current) => ({ ...current, pillars: current.pillars.map((item) => item.id === pillar.id ? { ...item, proof: value } : item) }))} placeholder="可观察证明" />
-            </section>
-          ))}
-        </div>
-        {project.pillars.length < 4 && <button className="add-row" type="button" onClick={() => edit((current) => ({ ...current, pillars: [...current.pillars, { id: makeId("pillar"), name: "", promise: "", do: "", doNot: "", proof: "" }] }))}>＋ 增加一条支柱</button>}
-      </>, { context: project.conceptSentence });
-    case "B2":
-      return wrap(<div className="loop-builder">
-        <LoopField number="01" label="感知" prompt="玩家先看见、听见或知道什么？" value={project.atomicLoop.perceive} onChange={(perceive) => edit((current) => ({ ...current, atomicLoop: { ...current.atomicLoop, perceive } }))} />
-        <LoopField number="02" label="决定" prompt="玩家要在什么之间做选择？" value={project.atomicLoop.decide} onChange={(decide) => edit((current) => ({ ...current, atomicLoop: { ...current.atomicLoop, decide } }))} />
-        <LoopField number="03" label="行动" prompt="实际输入或操作是什么？" value={project.atomicLoop.act} onChange={(act) => edit((current) => ({ ...current, atomicLoop: { ...current.atomicLoop, act } }))} />
-        <LoopField number="04" label="状态变化" prompt="系统中什么被改变？" value={project.atomicLoop.change} onChange={(change) => edit((current) => ({ ...current, atomicLoop: { ...current.atomicLoop, change } }))} />
-        <LoopField number="05" label="反馈" prompt="玩家怎样理解结果并开始下一轮？" value={project.atomicLoop.feedback} onChange={(feedback) => edit((current) => ({ ...current, atomicLoop: { ...current.atomicLoop, feedback } }))} />
-      </div>, { context: project.conceptSentence });
-    case "B3":
-      return wrap(<div className="stack-fields">
-        <TextArea label="循环中的哪个时刻最能体现技巧或价值判断？" value={project.coreDecision.moment} onChange={(moment) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, moment } }))} />
-        <div className="comparison-columns">
-          <section><span>选择 A</span><TextField label="做什么" value={project.coreDecision.optionA} onChange={(optionA) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, optionA } }))} /><TextField label="收益与代价" value={project.coreDecision.tradeoffA} onChange={(tradeoffA) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, tradeoffA } }))} /></section>
-          <section><span>选择 B</span><TextField label="做什么" value={project.coreDecision.optionB} onChange={(optionB) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, optionB } }))} /><TextField label="收益与代价" value={project.coreDecision.tradeoffB} onChange={(tradeoffB) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, tradeoffB } }))} /></section>
-        </div>
-        <TextField label="做决定时，玩家知道什么？" value={project.coreDecision.information} onChange={(information) => edit((current) => ({ ...current, coreDecision: { ...current.coreDecision, information } }))} />
-      </div>, { context: `循环：${Object.values(project.atomicLoop).filter(Boolean).join(" → ")}` });
-    case "B6":
-      return wrap(<div className="field-card-grid">
-        {formalMeta.map(([id, label, prompt]) => <TextArea key={id} label={label} help={prompt} value={project.formal[id]} onChange={(value) => edit((current) => ({ ...current, formal: { ...current.formal, [id]: value } }))} compact />)}
-      </div>, { context: project.conceptSentence });
-    case "B7":
-      return wrap(<>
-        <div className="causal-chain">
-          <TextArea label="设计元素" help="规则、资源、反馈或呈现" value={project.causal.design} onChange={(design) => edit((current) => ({ ...current, causal: { ...current.causal, design } }))} compact />
-          <span>→</span>
-          <TextArea label="玩家动态" help="玩家可能形成的行为与策略" value={project.causal.dynamic} onChange={(dynamic) => edit((current) => ({ ...current, causal: { ...current.causal, dynamic } }))} compact />
-          <span>→</span>
-          <TextArea label="目标体验" help="最终希望玩家感到什么" value={project.causal.experience} onChange={(experience) => edit((current) => ({ ...current, causal: { ...current.causal, experience } }))} compact />
-        </div>
-        <TextArea label="为什么相信这条因果链？" value={project.causal.rationale} onChange={(rationale) => edit((current) => ({ ...current, causal: { ...current.causal, rationale } }))} />
-        <TextField label="什么条件下它可能不成立？" value={project.causal.counterCondition} onChange={(counterCondition) => edit((current) => ({ ...current, causal: { ...current.causal, counterCondition } }))} />
-      </>, { context: `体验承诺：${project.experiences.join(" · ")}｜${project.experienceMoment}` });
-    case "B8":
-      return wrap(<div className="field-card-grid">
-        {dimensionMeta.map(([id, label, prompt]) => <TextArea key={id} label={`${label}设计维度`} help={prompt} value={project.dimensions[id]} onChange={(value) => edit((current) => ({ ...current, dimensions: { ...current.dimensions, [id]: value } }))} />)}
-      </div>, { context: `这些不是项目支柱，而是支持支柱和因果链的四类元素。` });
-    case "B9":
-      return <Checkpoint node={node} title="设计骨架已经能说明游戏如何运行，以及为什么可能产生目标体验。" items={[
-        ["项目支柱", project.pillars.filter((p) => p.name).map((p) => p.name).join(" · ")],
-        ["原子循环", Object.values(project.atomicLoop).filter(Boolean).join(" → ")],
-        ["关键选择", `${project.coreDecision.optionA} / ${project.coreDecision.optionB}`],
-        ["体验因果", `${project.causal.design} → ${project.causal.dynamic} → ${project.causal.experience}`],
-      ]} primary="进入判断与取舍" onPrimary={() => complete("answered", "C1")} actions={[["回到结构缺口", () => go(issues.find((issue) => issue.nodeId.startsWith("B"))?.nodeId ?? "B1")], ["先看最大风险", () => go("C7")]]} />;
-    case "C1":
-      return wrap(<>
-        <ChoiceGrid label="最多选择两个主导动机" choices={motivationChoices.map((title) => ({ id: title, title }))} selected={project.audienceMotivations} onToggle={(value) => edit({ audienceMotivations: toggle(project.audienceMotivations, value, 2) })} />
-        <TextField label="明确不服务的动机" value={project.excludedMotivation} onChange={(excludedMotivation) => edit({ excludedMotivation })} placeholder="例如：不服务追求长期刷取与数值力量的玩家" />
-        <TextArea label="这些玩家熟悉什么，通常在什么情境游玩，能接受怎样的失败与学习成本？" value={project.audienceContext} onChange={(audienceContext) => edit({ audienceContext })} />
-      </>, { context: `目标体验：${project.experiences.join(" · ")}` });
-    case "C2":
-      return wrap(<>
-        <ChoiceGrid label="1–2 个主类型 / 规则预期" choices={genreChoices.map((title) => ({ id: title, title }))} selected={project.genres} onToggle={(value) => edit({ genres: toggle(project.genres, value, 2) })} />
-        <TextField label="自定义规则家族（可选）" value={project.genreCustom} onChange={(genreCustom) => edit({ genreCustom })} />
-        <div className="reference-workbench">
-          <TextField label="主参考作品、活动或设计模式" value={project.referenceTitle} onChange={(referenceTitle) => edit({ referenceTitle })} placeholder="不局限于游戏名" />
-          <TextArea label="它帮助判断什么？" value={project.referenceUse} onChange={(referenceUse) => edit({ referenceUse })} placeholder="核心动作、循环、受众、视听、技术或反例" compact />
-          <div className="two-columns">
-            <TextArea label="借什么" value={project.referenceBorrow} onChange={(referenceBorrow) => edit({ referenceBorrow })} compact />
-            <TextArea label="避开什么" value={project.referenceAvoid} onChange={(referenceAvoid) => edit({ referenceAvoid })} compact />
-          </div>
-        </div>
-      </>, { context: project.conceptSentence });
-    case "C3":
-      return wrap(<>
-        <ChoiceGrid label="如果只能保留一个不同点" choices={differentiationChoices.map((title) => ({ id: title, title }))} selected={[project.differentiationType]} onToggle={(differentiationType) => edit({ differentiationType })} single />
-        <TextArea label="和同类相比，这个不同点怎样改变玩家的动作、规则、关系或节奏？" value={project.differentiation} onChange={(differentiation) => edit({ differentiation })} />
-      </>, { context: `参考：${project.referenceTitle || "尚未填写"}` });
-    case "C4":
-      return wrap(<div className="field-card-grid constraints-grid">
-        <TextField label="平台 / 设备" value={project.constraints.platform} onChange={(platform) => edit((current) => ({ ...current, constraints: { ...current.constraints, platform } }))} placeholder="PC、移动端、桌游……" />
-        <TextField label="游玩方式" value={project.constraints.playMode} onChange={(playMode) => edit((current) => ({ ...current, constraints: { ...current.constraints, playMode } }))} placeholder="单人、本地多人、联网……" />
-        <TextField label="团队与已有能力" value={project.constraints.team} onChange={(team) => edit((current) => ({ ...current, constraints: { ...current.constraints, team } }))} />
-        <TextField label="时间窗口" value={project.constraints.time} onChange={(time) => edit((current) => ({ ...current, constraints: { ...current.constraints, time } }))} />
-        <TextField label="预算级别" value={project.constraints.budget} onChange={(budget) => edit((current) => ({ ...current, constraints: { ...current.constraints, budget } }))} placeholder="未知也可以明确写未知" />
-        <TextField label="内容规模边界" value={project.constraints.content} onChange={(content) => edit((current) => ({ ...current, constraints: { ...current.constraints, content } }))} />
-      </div>, { context: `差异化：${project.differentiation}` });
-    case "C5":
-      return wrap(<div className="feasibility-list">
-        {feasibilityAxes.map(([id, label, prompt]) => (
-          <section className="feasibility-row" key={id}>
-            <div><strong>{label}</strong><span>{prompt}</span></div>
-            <select aria-label={`${label}可行性状态`} value={project.feasibility[id] ?? ""} onChange={(event) => edit((current) => ({ ...current, feasibility: { ...current.feasibility, [id]: event.target.value as FeasibilityStatus } }))}>
-              <option value="">选择状态</option><option value="evidence">已有依据</option><option value="testable">可低成本验证</option><option value="uncertain">高不确定</option><option value="not_relevant">暂不相关</option>
-            </select>
-            <input aria-label={`${label}依据或依赖`} value={project.feasibilityNotes[id] ?? ""} onChange={(event) => edit((current) => ({ ...current, feasibilityNotes: { ...current.feasibilityNotes, [id]: event.target.value } }))} placeholder="依据、依赖或最小验证方式" />
-          </section>
-        ))}
-      </div>, { context: "可行性不合成总分；高影响未知项会进入风险排序。" });
-    case "C7":
-      return wrap(<>
-        <ChoiceGrid label="风险类型" choices={riskChoices.map((title) => ({ id: title, title }))} selected={[project.topRisk.type]} onToggle={(type) => edit((current) => ({ ...current, topRisk: { ...current.topRisk, type } }))} single />
-        <TextArea label="什么最可能让整个方向不成立？" value={project.topRisk.statement} onChange={(statement) => edit((current) => ({ ...current, topRisk: { ...current.topRisk, statement } }))} />
-        <div className="three-columns">
-          <SelectField label="影响" value={project.topRisk.impact} onChange={(impact) => edit((current) => ({ ...current, topRisk: { ...current.topRisk, impact } }))} options={["低", "中", "高"]} />
-          <SelectField label="未知程度" value={project.topRisk.uncertainty} onChange={(uncertainty) => edit((current) => ({ ...current, topRisk: { ...current.topRisk, uncertainty } }))} options={["低", "中", "高"]} />
-          <SelectField label="验证成本" value={project.topRisk.validationCost} onChange={(validationCost) => edit((current) => ({ ...current, topRisk: { ...current.topRisk, validationCost } }))} options={["低", "中", "高"]} />
-        </div>
-      </>, { context: issues.filter((issue) => issue.kind === "risk" || issue.severity === "blocking").map((issue) => issue.label).join("；") || "当前没有自动发现的阻断项，仍需由作者判断最大未知。" });
-    case "C9":
-      return wrap(<>
-        <ChoiceGrid label="当前怎么决定" choices={decisionChoices.map((title) => ({ id: title, title }))} selected={[project.decision.choice]} onToggle={(choice) => edit((current) => ({ ...current, decision: { ...current.decision, choice } }))} single />
-        <TextArea label="为什么这样选？" value={project.decision.rationale} onChange={(rationale) => edit((current) => ({ ...current, decision: { ...current.decision, rationale } }))} />
-        <TextArea label="什么证据会推翻这个决定？" value={project.decision.falsifier} onChange={(falsifier) => edit((current) => ({ ...current, decision: { ...current.decision, falsifier } }))} />
-        <TextField label="什么时候复查？" value={project.decision.revisit} onChange={(revisit) => edit((current) => ({ ...current, decision: { ...current.decision, revisit } }))} placeholder="某个日期、原型完成或出现某种证据时" />
-      </>, { context: `最大风险：${project.topRisk.statement}` });
-    case "C10":
-      return <Checkpoint node={node} title="现在有足够依据安排验证，但这不是对最终可行性的承诺。" items={[
-        ["目标玩家", `${project.audienceMotivations.join(" · ")}｜${project.audienceContext}`],
-        ["参考与差异", `${project.referenceTitle}｜${project.differentiation}`],
-        ["最大风险", project.topRisk.statement],
-        ["当前判断", `${project.decision.choice}｜${project.decision.rationale}`],
-      ]} primary="形成行动路径" onPrimary={() => complete("answered", "D0")} actions={[["回到风险", () => go("C7")], ["修改硬约束", () => go("C4")]]} />;
-    case "D0":
-      return wrap(<>
-        <div className="question-list-editor">
-          {project.openQuestions.map((question, index) => (
-            <div key={`question-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><input value={question} aria-label={`未决问题 ${index + 1}`} placeholder="一个会影响设计决定的问题" onChange={(event) => edit((current) => ({ ...current, openQuestions: current.openQuestions.map((item, itemIndex) => itemIndex === index ? event.target.value : item) }))} />{project.openQuestions.length > 1 && <button type="button" onClick={() => edit((current) => ({ ...current, openQuestions: current.openQuestions.filter((_, itemIndex) => itemIndex !== index) }))}>删除</button>}</div>
-          ))}
-        </div>
-        {project.openQuestions.length < 7 && <button className="add-row" type="button" onClick={() => edit((current) => ({ ...current, openQuestions: [...current.openQuestions, ""] }))}>＋ 增加问题</button>}
-        {issues.length > 0 && <ReferenceHint title="CE 从当前状态发现的问题"><ul>{issues.slice(0, 8).map((issue) => <li key={issue.id}>{issue.label}（{issue.nodeId}）</li>)}</ul></ReferenceHint>}
-      </>, { context: `最大风险：${project.topRisk.statement || "尚未明确"}` });
-    case "D2":
-      return wrap(<>
-        <label className="select-block"><span>下一轮只解决一个问题</span><select value={project.nextQuestion} onChange={(event) => edit({ nextQuestion: event.target.value })}><option value="">选择首要问题</option>{project.openQuestions.filter(Boolean).map((question) => <option value={question} key={question}>{question}</option>)}{project.topRisk.statement && <option value={project.topRisk.statement}>{project.topRisk.statement}</option>}</select></label>
-        <TextArea label="知道答案后，会改变哪个决定？" value={project.changeIfAnswered} onChange={(changeIfAnswered) => edit({ changeIfAnswered })} />
-      </>, { context: "如果答案不会改变任何决定，这个问题不应阻断下一轮。" });
-    case "D3":
-      return wrap(<>
-        <div className="hypothesis-builder">
-          <span>如果让玩家</span><input value={project.hypothesis.setup} onChange={(event) => edit((current) => ({ ...current, hypothesis: { ...current.hypothesis, setup: event.target.value } }))} placeholder="接触某项机制/情境" />
-          <span>他们会</span><input value={project.hypothesis.behavior} onChange={(event) => edit((current) => ({ ...current, hypothesis: { ...current.hypothesis, behavior: event.target.value } }))} placeholder="产生某种行为/策略" />
-          <span>进而</span><input value={project.hypothesis.result} onChange={(event) => edit((current) => ({ ...current, hypothesis: { ...current.hypothesis, result: event.target.value } }))} placeholder="获得某种体验/结果" />
-        </div>
-        <div className="two-columns">
-          <TextArea label="支持信号" value={project.hypothesis.supportSignal} onChange={(supportSignal) => edit((current) => ({ ...current, hypothesis: { ...current.hypothesis, supportSignal } }))} placeholder="可观察行为，不只是‘玩家说好玩’" compact />
-          <TextArea label="反驳信号" value={project.hypothesis.refuteSignal} onChange={(refuteSignal) => edit((current) => ({ ...current, hypothesis: { ...current.hypothesis, refuteSignal } }))} compact />
-        </div>
-      </>, { context: `一号问题：${project.nextQuestion}` });
-    case "D4":
-      return wrap(<>
-        <ChoiceGrid label="原型主要验证什么" choices={prototypeChoices.map((title) => ({ id: title, title }))} selected={[project.prototype.type]} onToggle={(type) => edit((current) => ({ ...current, prototype: { ...current.prototype, type } }))} single />
-        <div className="two-columns">
-          <TextArea label="必须实现" value={project.prototype.mustBuild} onChange={(mustBuild) => edit((current) => ({ ...current, prototype: { ...current.prototype, mustBuild } }))} compact />
-          <TextArea label="刻意不做" value={project.prototype.omit} onChange={(omit) => edit((current) => ({ ...current, prototype: { ...current.prototype, omit } }))} compact />
-        </div>
-        <div className="two-columns"><TextField label="参与者 / 环境" value={project.prototype.participants} onChange={(participants) => edit((current) => ({ ...current, prototype: { ...current.prototype, participants } }))} /><TextField label="时限" value={project.prototype.timebox} onChange={(timebox) => edit((current) => ({ ...current, prototype: { ...current.prototype, timebox } }))} placeholder="例如：2 天" /></div>
-      </>, { context: `验证：${project.hypothesis.supportSignal}` });
-    case "D5":
-      return wrap(<div className="stack-fields">
-        <TextArea label="实际观察什么？" value={project.testPlan.observe} onChange={(observe) => edit((current) => ({ ...current, testPlan: { ...current.testPlan, observe } }))} />
-        <TextArea label="试玩后问什么？" value={project.testPlan.ask} onChange={(ask) => edit((current) => ({ ...current, testPlan: { ...current.testPlan, ask } }))} />
-        <div className="two-columns"><TextField label="轮次 / 样本范围" value={project.testPlan.rounds} onChange={(rounds) => edit((current) => ({ ...current, testPlan: { ...current.testPlan, rounds } }))} /><TextField label="停止条件" value={project.testPlan.stopCondition} onChange={(stopCondition) => edit((current) => ({ ...current, testPlan: { ...current.testPlan, stopCondition } }))} /></div>
-      </div>, { context: `支持：${project.hypothesis.supportSignal}｜反驳：${project.hypothesis.refuteSignal}` });
-    case "D6":
-      return wrap(<>
-        <div className="task-editor-list">
-          {project.tasks.map((task, index) => (
-            <section className="task-editor" key={task.id}>
-              <div className="editor-heading"><span>{String(index + 1).padStart(2, "0")}</span><strong>{task.deliverable || "未定义产物"}</strong>{project.tasks.length > 1 && <button type="button" onClick={() => edit((current) => ({ ...current, tasks: current.tasks.filter((item) => item.id !== task.id) }))}>删除</button>}</div>
-              <div className="two-columns"><TextField label="动作" value={task.action} onChange={(action) => edit((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, action } : item) }))} placeholder="搭建、招募、记录……" /><TextField label="可检查产物" value={task.deliverable} onChange={(deliverable) => edit((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, deliverable } : item) }))} /></div>
-              <div className="two-columns"><TextField label="负责人" value={task.owner} onChange={(owner) => edit((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, owner } : item) }))} placeholder="我 / 程序 / 设计……" /><TextField label="完成定义" value={task.doneDefinition} onChange={(doneDefinition) => edit((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, doneDefinition } : item) }))} /></div>
-            </section>
-          ))}
-        </div>
-        {project.tasks.length < 8 && <button className="add-row" type="button" onClick={() => edit((current) => ({ ...current, tasks: [...current.tasks, { id: makeId("task"), action: "", deliverable: "", owner: "", doneDefinition: "" }] }))}>＋ 增加任务</button>}
-        <div className="two-columns scope-fields"><TextArea label="如果主假设失败，下一条最便宜的路" value={project.contingency} onChange={(contingency) => edit({ contingency })} compact /><TextArea label="本轮明确不做" value={project.notNow} onChange={(notNow) => edit({ notNow })} compact /></div>
-      </>, { context: `原型：${project.prototype.type}｜时限：${project.prototype.timebox}` });
-    case "D8":
-      return <ActionWorkbench project={project} node={node} edit={edit} go={go} complete={complete} />;
-    case "I0":
-      return wrap(<>
-        <div className="observation-editor-list">
-          {project.observations.map((observation, index) => (
-            <section className="observation-editor" key={observation.id}>
-              <div className="editor-heading"><span>{String(index + 1).padStart(2, "0")}</span><strong>一次观察</strong>{project.observations.length > 1 && <button type="button" onClick={() => edit((current) => ({ ...current, observations: current.observations.filter((item) => item.id !== observation.id) }))}>删除</button>}</div>
-              <TextField label="版本 / 参与者 / 环境" value={observation.context} onChange={(context) => edit((current) => ({ ...current, observations: current.observations.map((item) => item.id === observation.id ? { ...item, context } : item) }))} />
-              <TextArea label="看见、听见或测得的事实" value={observation.fact} onChange={(fact) => edit((current) => ({ ...current, observations: current.observations.map((item) => item.id === observation.id ? { ...item, fact } : item) }))} />
-              <TextArea label="可能的解释（与事实分开）" value={observation.interpretation} onChange={(interpretation) => edit((current) => ({ ...current, observations: current.observations.map((item) => item.id === observation.id ? { ...item, interpretation } : item) }))} compact />
-            </section>
-          ))}
-        </div>
-        <button className="add-row" type="button" onClick={() => edit((current) => ({ ...current, observations: [...current.observations, { id: makeId("observation"), context: "", fact: "", interpretation: "" }] }))}>＋ 增加观察</button>
-      </>, { context: `原假设：如果${project.hypothesis.setup}，玩家会${project.hypothesis.behavior}，进而${project.hypothesis.result}` });
-    case "I1":
-      return wrap(<>
-        <div className="evidence-compare"><section><span>支持信号</span><p>{project.hypothesis.supportSignal || "未定义"}</p></section><section><span>反驳信号</span><p>{project.hypothesis.refuteSignal || "未定义"}</p></section></div>
-        <ChoiceGrid label="现有观察更接近" choices={["支持假设", "反驳假设", "没有出现", "无法判断"].map((title) => ({ id: title, title }))} selected={[project.evidenceAssessment]} onToggle={(evidenceAssessment) => edit({ evidenceAssessment })} single />
-      </>, { context: project.observations.map((item) => item.fact).filter(Boolean).join("；") });
-    case "I2":
-      return wrap(<>
-        <ChoiceGrid label="现在怎么处理这条假设" choices={["保留", "调整", "替换", "需要更多证据", "放弃"].map((title) => ({ id: title, title }))} selected={[project.iterationDecision]} onToggle={(iterationDecision) => edit({ iterationDecision })} single />
-        <TextArea label="基于什么理由？" value={project.iterationReason} onChange={(iterationReason) => edit({ iterationReason })} />
-      </>, { context: `证据判断：${project.evidenceAssessment}` });
-    case "I3": {
-      const candidates = ["A6", "A7", "B1", "B2", "B3", "B7", "C7", "C9", "D3", "D4", "D6"];
-      return wrap(<ChoiceGrid label="哪些决定需要复核？" choices={candidates.map((id) => ({ id, title: `${id} · ${nodeMap[id]?.short}` }))} selected={project.reviewNodes} onToggle={(value) => edit({ reviewNodes: toggle(project.reviewNodes, value) })} />, { context: `迭代决定：${project.iterationDecision}｜${project.iterationReason}` });
-    }
-    case "I4":
-      return <Checkpoint node={node} title="证据已经进入设计系统；请选择它真正需要改变的地方。" items={[
-        ["证据判断", project.evidenceAssessment], ["迭代决定", `${project.iterationDecision}｜${project.iterationReason}`], ["待复核", project.reviewNodes.join(" · ")],
-      ]} primary="回到设计骨架" onPrimary={() => complete("answered", "B1")} actions={[["改概念", () => complete("answered", "A1")], ["重做判断", () => complete("answered", "C7")], ["安排下一轮", () => complete("answered", "D0")], ["返回项目入口", () => complete("answered", "S0")]]} />;
-    default:
-      return wrap(<InlineNotice>这个节点尚未找到对应视图。请返回设计路径选择其他节点。</InlineNotice>);
+  async function copySummary() {
+    await navigator.clipboard.writeText(buildMarkdown(project));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
   }
-}
 
-function StartNode({ project, issues, edit, go }: { project: ProjectState; issues: ReturnType<typeof deriveIssues>; edit: RendererProps["edit"]; go: (id: string) => void }) {
-  const hasProject = Boolean(project.rawIdea.trim());
-  return (
-    <div className="start-view entrance">
-      <p className="context-label">CreatorEngine · 对话工作台</p>
-      <h1>让当前最重要的问题浮上来。</h1>
-      <p className="supporting-copy">不是写满一份表格。CE 帮你澄清核心、补全结构、做好判断，再把最大未知变成下一项可验证工作。</p>
-      <div className="start-settings">
-        <TextField label="项目名称" value={project.name} onChange={(name) => edit({ name })} />
-      </div>
-      <div className="entry-grid">
-        <EntryCard number="01" title={hasProject ? "继续当前项目" : "开始一个新想法"} body={hasProject ? `当前有 ${issues.length} 项建议；先确定这次希望推进的结果。` : "从一句不完整的动作、画面或题材开始。"} action={hasProject ? "选择目标" : "开始"} onClick={() => go(hasProject ? "S1" : "A0")} />
-        <EntryCard number="02" title="诊断我卡在哪里" body="按当前缺口、风险和待复核状态推荐下一问。" action="开始诊断" onClick={() => go(recommendedNode(project))} disabled={!hasProject} />
-        <EntryCard number="03" title="录入一次试玩" body="把实际观察对照原假设，让证据回流到设计。" action="记录证据" onClick={() => go(project.hypothesis.supportSignal ? "I0" : "D3")} disabled={!hasProject} />
-        <EntryCard number="04" title="只安排下一步" body="汇总未知、选择一号问题并形成最小工作路径。" action="形成路径" onClick={() => go(hasProject ? "D0" : "A0")} />
-      </div>
-      <div className="principle-strip"><span>四项职责</span><p>澄清想法</p><p>构建设计</p><p>辅助判断</p><p>形成路径</p></div>
-    </div>
-  );
-}
-
-function NodeFrame({ node, project, valid, context, noAlternative, nextLabel, onBack, onComplete, children }: { node: NodeMeta; project: ProjectState; valid: boolean; context?: string; noAlternative?: boolean; nextLabel?: string; onBack: () => void; onComplete: (mode?: CompletionMode) => void; children: ReactNode }) {
-  const status = project.statuses[node.id];
-  return (
-    <div className="guided-view node-view entrance">
-      <div className="node-kicker"><span>{node.id}</span><span>{phases.find((phase) => phase.id === node.phase)?.title}</span>{status && <strong>{completionLabels[status]}</strong>}</div>
-      <h1>{node.title}</h1>
-      <p className="supporting-copy node-purpose">{node.purpose}</p>
-      {context && <div className="node-context"><span>带着前面的答案</span><p>{context}</p></div>}
-      <div className="node-body">{children}</div>
-      {node.reference && <ReferenceHint title="为什么这样问"><p>{node.reference}</p></ReferenceHint>}
-      <div className="node-decision-bar">
-        <button className="back-button" type="button" onClick={onBack}><CaretLeft size={14} />上一问</button>
-        <div className="completion-options">
-          {!noAlternative && <>
-            <button type="button" disabled={!valid} onClick={() => onComplete("assumption")}>暂作假设</button>
-            <button type="button" onClick={() => onComplete("deferred")}>延期回答</button>
-            <button type="button" onClick={() => onComplete("not_applicable")}>不适用</button>
-          </>}
-          <button className="primary-button inline" type="button" disabled={!valid} onClick={() => onComplete("answered")}>{nextLabel ?? "接受并继续"}<ArrowRight size={14} /></button>
-        </div>
-      </div>
-      {!valid && <p className="validation-note">完成主要输入后可以确认；如果现在未知，可明确延期或标记不适用。</p>}
-    </div>
-  );
-}
-
-function Checkpoint({ node, title, items, primary, onPrimary, actions }: { node: NodeMeta; title: string; items: string[][]; primary: string; onPrimary: () => void; actions: Array<[string, () => void]> }) {
-  return (
-    <div className="checkpoint-view entrance">
-      <div className="checkpoint-mark"><Check size={25} /></div>
-      <p className="context-label">{node.id} · 阶段检查点</p>
-      <h1>{title}</h1>
-      <div className="checkpoint-grid">
-        {items.map(([label, value]) => <section key={label}><span>{label}</span><p>{value || "仍未明确"}</p></section>)}
-      </div>
-      <div className="checkpoint-actions">
-        <button className="primary-button" type="button" onClick={onPrimary}>{primary}<ArrowRight size={14} /></button>
-        <div>{actions.map(([label, action]) => <button type="button" key={label} onClick={action}>{label}</button>)}</div>
-      </div>
-    </div>
-  );
-}
-
-function ActionWorkbench({ project, node, edit, go, complete }: { project: ProjectState; node: NodeMeta; edit: RendererProps["edit"]; go: (id: string) => void; complete: RendererProps["complete"] }) {
-  const markdown = buildMarkdown(project);
-  async function copy() { await navigator.clipboard.writeText(markdown); }
-  function download() {
-    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  function downloadSummary() {
+    const blob = new Blob([buildMarkdown(project)], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${project.name || "game-design"}.md`;
-    anchor.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${project.name || "游戏设计摘要"}.md`;
+    link.click();
     URL.revokeObjectURL(url);
   }
-  return (
-    <div className="action-workbench entrance">
-      <div className="node-kicker"><span>{node.id}</span><span>行动路径</span></div>
-      <h1>下一轮不是“继续完善”，而是回答一个问题。</h1>
-      <p className="supporting-copy">所有任务都应服务一号问题；失败时也有可回退的路径。</p>
-      <section className="mission-card"><span>一号问题</span><h2>{project.nextQuestion || "尚未选择"}</h2><p>{project.changeIfAnswered}</p></section>
-      <div className="workbench-grid">
-        <section><span>可验证假设</span><p>如果让玩家{project.hypothesis.setup}，他们会{project.hypothesis.behavior}，进而{project.hypothesis.result}。</p></section>
-        <section><span>最小原型</span><p>{project.prototype.type}：{project.prototype.mustBuild}</p><small>刻意不做：{project.prototype.omit}</small></section>
-        <section><span>支持 / 反驳</span><p>{project.hypothesis.supportSignal}</p><small>{project.hypothesis.refuteSignal}</small></section>
-        <section><span>备选路径</span><p>{project.contingency || "尚未填写"}</p><small>本轮不做：{project.notNow || "尚未填写"}</small></section>
+
+  return <div className="ce-shell">
+    <header className="ce-topbar">
+      <button className="ce-brand" type="button" onClick={() => go("welcome")} aria-label="返回欢迎页">
+        <span className="ce-mark">CE</span>
+        <span><strong>创作引擎</strong><small>{project.name}</small></span>
+      </button>
+      <div className="ce-progress" aria-label={`当前步骤进度 ${progress}%`}>
+        <span className="ce-progress-copy">{current.index === 0 ? "开始" : `${String(current.index).padStart(2, "0")} · ${current.short}`}</span>
+        <span className="ce-progress-track"><i style={{ width: `${progress}%` }} /></span>
+        <span>{progress}%</span>
       </div>
-      <section className="work-path-list"><div className="section-title"><span>工作路径</span><strong>{project.tasks.filter((task) => task.action).length} 项</strong></div>{project.tasks.filter((task) => task.action || task.deliverable).map((task, index) => <div key={task.id}><span>{String(index + 1).padStart(2, "0")}</span><p><strong>{task.action}</strong>{task.deliverable}<small>{task.owner || "负责人待定"} · 完成：{task.doneDefinition || "待定义"}</small></p></div>)}</section>
-      <div className="workbench-edit"><TextArea label="备选路径" value={project.contingency} onChange={(contingency) => edit({ contingency })} compact /><TextArea label="本轮不做" value={project.notNow} onChange={(notNow) => edit({ notNow })} compact /></div>
-      <div className="workbench-actions">
-        <button type="button" className="secondary-export" onClick={copy}><Copy size={15} />复制完整方案</button>
-        <button type="button" className="secondary-export" onClick={download}><DownloadSimple size={15} />下载设计方案</button>
-        <button type="button" className="secondary-export" onClick={() => go("D6")}>修改工作路径</button>
-        <button type="button" className="primary-button" onClick={() => complete("answered", "I0")}>完成原型后记录证据<ArrowRight size={14} /></button>
+      <div className="ce-actions">
+        <span className="save-state"><FloppyDisk size={17} />{hydrated ? "已保存" : "读取中"}</span>
+        <button type="button" onClick={restart}><ArrowCounterClockwise size={18} />重新开始</button>
       </div>
+    </header>
+
+    <aside className="ce-rail" aria-label="创作步骤">
+      <div className="rail-heading"><span>FLOW</span><strong>构思步骤</strong></div>
+      <ol>{creationSteps.map((step) => {
+        const filled = hasStepContent(project, step.id);
+        const active = step.id === project.currentStep;
+        return <li key={step.id} className={`${active ? "active" : ""} ${filled ? "filled" : ""}`}>
+          <button type="button" onClick={() => go(step.id)} aria-current={active ? "step" : undefined}>
+            <span>{filled ? <Check size={15} weight="bold" /> : String(step.index).padStart(2, "0")}</span>
+            <strong>{step.short}</strong>
+            <small>{step.id === "summary" ? "汇总" : filled ? "已填" : "空"}</small>
+          </button>
+        </li>;
+      })}</ol>
+    </aside>
+
+    <main className={`ce-main step-${project.currentStep}`}>
+      {project.currentStep === "welcome" ? <Welcome project={project} edit={edit} go={go} /> :
+        <article className="step-page">
+          {project.currentStep !== "sentences" && <header className="step-heading"><h1>{current.title}</h1></header>}
+          <div className="step-content">{renderStep(project.currentStep, project, edit, copySummary, downloadSummary, copied)}</div>
+          {references[project.currentStep] && <button className="reference-trigger" type="button" onClick={() => setReferenceOpen(project.currentStep)}>参考</button>}
+          <footer className="step-navigation">
+            <button className="back-button" type="button" onClick={() => go(previousStep(project.currentStep))}><ArrowLeft size={19} />上一步</button>
+            {project.currentStep !== "summary" && <button className="next-button" type="button" onClick={() => go(nextStep(project.currentStep))}>下一步<ArrowRight size={19} /></button>}
+          </footer>
+        </article>}
+    </main>
+
+    {referenceOpen && references[referenceOpen] && <ReferenceModal reference={references[referenceOpen]!} onClose={() => setReferenceOpen(null)} />}
+  </div>;
+}
+
+function Welcome({ project, edit, go }: StepProps & { go: (step: StepId) => void }) {
+  return <section className="welcome-page">
+    <h1>把游戏想法说清楚。</h1>
+    <label className="project-name-field"><span>项目名称</span><input value={project.name} placeholder="请输入..." onChange={(event) => edit((current) => ({ ...current, name: event.target.value }))} /></label>
+    <div className="welcome-actions"><button className="hero-button" type="button" onClick={() => go("idea")}><span>开始构思</span><ArrowRight size={22} /></button></div>
+  </section>;
+}
+
+function renderStep(step: StepId, project: ProjectState, edit: StepProps["edit"], copySummary: () => Promise<void>, downloadSummary: () => void, copied: boolean) {
+  switch (step) {
+    case "idea": return <IdeaStep project={project} edit={edit} />;
+    case "sentences": return <SentenceTabsStep project={project} edit={edit} />;
+    case "tetrad": return <TetradStep project={project} edit={edit} />;
+    case "player": return <PlayerStep project={project} edit={edit} />;
+    case "summary": return <SummaryStep project={project} edit={edit} copySummary={copySummary} downloadSummary={downloadSummary} copied={copied} />;
+    default: return null;
+  }
+}
+
+function IdeaStep({ project, edit }: StepProps) {
+  return <label className="large-field"><span>最初想法</span><textarea value={project.rawIdea} onChange={(event) => edit((current) => ({ ...current, rawIdea: event.target.value }))} placeholder="请输入..." /></label>;
+}
+
+function SentenceTabsStep({ project, edit }: StepProps) {
+  const [active, setActive] = useState<SentenceTab>("gameplay");
+  const meta = sentenceMeta.find((item) => item.id === active)!;
+  return <div className="compact-workspace sentence-workspace">
+    <Tabs label="三句话">{sentenceMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasSentenceContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
+    <section className="sentence-panel">
+      <h1>{meta.title}</h1>
+      {active === "gameplay" && <>
+        <LiveSentence>{gameplayPreview(project)}</LiveSentence>
+        <div className="sentence-fields"><TextField label="身份" value={project.gameplay.identity} onChange={(value) => updateRecord(edit, "gameplay", "identity", value)} /><TextField label="核心动作" value={project.gameplay.verb} onChange={(value) => updateRecord(edit, "gameplay", "verb", value)} /><TextField label="目标" value={project.gameplay.goal} onChange={(value) => updateRecord(edit, "gameplay", "goal", value)} /><TextField label="约束或反转" value={project.gameplay.constraint} onChange={(value) => updateRecord(edit, "gameplay", "constraint", value)} /></div>
+      </>}
+      {active === "experience" && <>
+        <LiveSentence>{experiencePreview(project)}</LiveSentence>
+        <div className="sentence-fields"><TextField label="目标玩家" value={project.experience.audience} onChange={(value) => updateRecord(edit, "experience", "audience", value)} /><TextField label="核心感受" value={project.experience.feeling} onChange={(value) => updateRecord(edit, "experience", "feeling", value)} /><TextField label="关键动态" value={project.experience.dynamic} onChange={(value) => updateRecord(edit, "experience", "dynamic", value)} /><TextField label="不依赖的常规方案" value={project.experience.alternative} onChange={(value) => updateRecord(edit, "experience", "alternative", value)} /></div>
+      </>}
+      {active === "hypothesis" && <>
+        <LiveSentence>{hypothesisPreview(project)}</LiveSentence>
+        <div className="sentence-fields"><TextField label="执行的机制" value={project.hypothesis.mechanism} onChange={(value) => updateRecord(edit, "hypothesis", "mechanism", value)} /><TextField label="产生的行为或策略" value={project.hypothesis.behavior} onChange={(value) => updateRecord(edit, "hypothesis", "behavior", value)} /><TextField label="目标体验" value={project.hypothesis.experience} onChange={(value) => updateRecord(edit, "hypothesis", "experience", value)} /><TextField label="可观察信号" value={project.hypothesis.signal} onChange={(value) => updateRecord(edit, "hypothesis", "signal", value)} /></div>
+      </>}
+    </section>
+  </div>;
+}
+
+function TetradStep({ project, edit }: StepProps) {
+  const [active, setActive] = useState<TetradKey>("narrative");
+  const dimension = tetradMeta.find((item) => item.id === active)!;
+  return <div className="compact-workspace">
+    <Tabs label="游戏设计四大支柱">{tetradMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasDimensionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
+    <section className="compact-panel">
+      <TextAreaField label={`${dimension.label}的基础框架`} value={project.tetrad[dimension.id].foundation} onChange={(value) => updateTetrad(edit, dimension.id, "foundation", value)} />
+      <TextAreaField label={`${dimension.label}的独特特点`} value={project.tetrad[dimension.id].signature} onChange={(value) => updateTetrad(edit, dimension.id, "signature", value)} />
+      <TextAreaField label={`${dimension.label}如何支持其他支柱`} value={project.tetrad[dimension.id].support} onChange={(value) => updateTetrad(edit, dimension.id, "support", value)} />
+    </section>
+  </div>;
+}
+
+function PlayerStep({ project, edit }: StepProps) {
+  const [active, setActive] = useState<PlayerTab>("firstLook");
+  return <div className="compact-workspace">
+    <Tabs label="玩家测三句话">{playerMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasPlayerSectionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
+    <section className="sentence-panel player-sentence-panel">
+      {active === "firstLook" && <><LiveSentence>{playerFirstPreview(project)}</LiveSentence><div className="sentence-fields"><TextField label="主题" value={project.player.firstLook.theme} onChange={(value) => updatePlayer(edit, "firstLook", "theme", value)} /><TextField label="游戏类型" value={project.player.firstLook.genre} onChange={(value) => updatePlayer(edit, "firstLook", "genre", value)} /><TextField label="关联游戏" value={project.player.firstLook.references} onChange={(value) => updatePlayer(edit, "firstLook", "references", value)} /><TextField label="体验预期" value={project.player.firstLook.expectation} onChange={(value) => updatePlayer(edit, "firstLook", "expectation", value)} /></div></>}
+      {active === "firstTen" && <><LiveSentence>{playerTenPreview(project)}</LiveSentence><div className="sentence-fields"><TextField label="会 / 不会" value={project.player.firstTen.fulfilment} onChange={(value) => updatePlayer(edit, "firstTen", "fulfilment", value)} /><TextField label="还能 / 而是" value={project.player.firstTen.outcome} onChange={(value) => updatePlayer(edit, "firstTen", "outcome", value)} /><TextField label="独特体验" value={project.player.firstTen.uniqueExperience} onChange={(value) => updatePlayer(edit, "firstTen", "uniqueExperience", value)} /><TextField label="目标 / 期待" value={project.player.firstTen.nextGoal} onChange={(value) => updatePlayer(edit, "firstTen", "nextGoal", value)} /></div></>}
+      {active === "arc" && <><LiveSentence>{playerArcPreview(project)}</LiveSentence><div className="sentence-fields"><TextField label="机制 / 内容" value={project.player.arc.source} onChange={(value) => updatePlayer(edit, "arc", "source", value)} /><TextField label="游戏体验" value={project.player.arc.finale} onChange={(value) => updatePlayer(edit, "arc", "finale", value)} /></div></>}
+    </section>
+  </div>;
+}
+
+function SummaryStep({ project, edit, copySummary, downloadSummary, copied }: StepProps & { copySummary: () => Promise<void>; downloadSummary: () => void; copied: boolean }) {
+  const [editing, setEditing] = useState(false);
+  return <div className="summary-layout">
+    <div className="summary-actions">
+      <button className={editing ? "primary" : ""} type="button" onClick={() => setEditing((value) => !value)}>{editing ? <Check size={18} /> : <PencilSimple size={18} />}{editing ? "完成" : "编辑"}</button>
+      <button type="button" onClick={copySummary}>{copied ? <Check size={18} /> : <Copy size={18} />}{copied ? "已复制" : "复制"}</button>
+      <button type="button" onClick={downloadSummary}><DownloadSimple size={18} />下载</button>
     </div>
-  );
+    {editing ? <SummaryEditor project={project} edit={edit} /> : <SummaryReadView project={project} />}
+  </div>;
 }
 
-function EntryCard({ number, title, body, action, onClick, disabled }: { number: string; title: string; body: string; action: string; onClick: () => void; disabled?: boolean }) {
-  return <button className="entry-card" type="button" onClick={onClick} disabled={disabled}><span>{number}</span><strong>{title}</strong><p>{body}</p><small>{disabled ? "先保存一个想法" : action} <ArrowRight size={12} /></small></button>;
+function SummaryReadView({ project }: { project: ProjectState }) {
+  return <>
+    <section className="summary-section"><h2>最初想法</h2><p>{display(project.rawIdea)}</p></section>
+    <section className="summary-section"><h2>三句话</h2><Statement label="一句话说明：什么游戏？">{gameplaySentence(project)}</Statement><Statement label="一句话：什么体验">{experienceSentence(project)}</Statement><Statement label="一句话：如何验证">{hypothesisSentence(project)}</Statement></section>
+    <section className="summary-section"><h2>游戏设计四大支柱</h2><div className="summary-tetrad">{tetradMeta.map((meta) => <article key={meta.id}><strong>{meta.label}</strong><p>{display(project.tetrad[meta.id].foundation)}</p><p>{display(project.tetrad[meta.id].signature)}</p><small>{display(project.tetrad[meta.id].support)}</small></article>)}</div></section>
+    <section className="summary-section"><h2>玩家测构思</h2><div className="summary-journey"><article><b>第一句话</b><p>{playerFirstPreview(project, "（空）")}</p></article><article><b>第二句话</b><p>{playerTenPreview(project, "（空）")}</p></article><article><b>第三句话</b><p>{playerArcPreview(project, "（空）")}</p></article></div></section>
+  </>;
 }
 
-function ChoiceList({ choices, selected, onSelect }: { choices: Choice[]; selected: string; onSelect: (id: string) => void }) {
-  return <div className="selection-list node-choice-list" role="radiogroup">{choices.map((choice) => <button className={choice.id === selected ? "selected" : ""} type="button" role="radio" aria-checked={choice.id === selected} key={choice.id} onClick={() => onSelect(choice.id)}><span className="radio-mark">{choice.id === selected && <span />}</span><span><strong>{choice.title}</strong><small>{choice.summary}</small></span></button>)}</div>;
+function SummaryEditor({ project, edit }: StepProps) {
+  return <div className="summary-editor">
+    <section className="summary-edit-section"><h2>最初想法</h2><TextAreaField label="最初想法" value={project.rawIdea} onChange={(value) => edit((current) => ({ ...current, rawIdea: value }))} /></section>
+    <section className="summary-edit-section"><h2>三句话</h2>
+      <EditSentenceBlock title="一句话说明：什么游戏？" preview={gameplayPreview(project)}><TextField label="身份" value={project.gameplay.identity} onChange={(value) => updateRecord(edit, "gameplay", "identity", value)} /><TextField label="核心动作" value={project.gameplay.verb} onChange={(value) => updateRecord(edit, "gameplay", "verb", value)} /><TextField label="目标" value={project.gameplay.goal} onChange={(value) => updateRecord(edit, "gameplay", "goal", value)} /><TextField label="约束或反转" value={project.gameplay.constraint} onChange={(value) => updateRecord(edit, "gameplay", "constraint", value)} /></EditSentenceBlock>
+      <EditSentenceBlock title="一句话：什么体验" preview={experiencePreview(project)}><TextField label="目标玩家" value={project.experience.audience} onChange={(value) => updateRecord(edit, "experience", "audience", value)} /><TextField label="核心感受" value={project.experience.feeling} onChange={(value) => updateRecord(edit, "experience", "feeling", value)} /><TextField label="关键动态" value={project.experience.dynamic} onChange={(value) => updateRecord(edit, "experience", "dynamic", value)} /><TextField label="不依赖的常规方案" value={project.experience.alternative} onChange={(value) => updateRecord(edit, "experience", "alternative", value)} /></EditSentenceBlock>
+      <EditSentenceBlock title="一句话：如何验证" preview={hypothesisPreview(project)}><TextField label="执行的机制" value={project.hypothesis.mechanism} onChange={(value) => updateRecord(edit, "hypothesis", "mechanism", value)} /><TextField label="产生的行为或策略" value={project.hypothesis.behavior} onChange={(value) => updateRecord(edit, "hypothesis", "behavior", value)} /><TextField label="目标体验" value={project.hypothesis.experience} onChange={(value) => updateRecord(edit, "hypothesis", "experience", value)} /><TextField label="可观察信号" value={project.hypothesis.signal} onChange={(value) => updateRecord(edit, "hypothesis", "signal", value)} /></EditSentenceBlock>
+    </section>
+    <section className="summary-edit-section"><h2>游戏设计四大支柱</h2><div className="summary-edit-pillars">{tetradMeta.map((meta) => <div className="summary-edit-card" key={meta.id}><h3>{meta.label}</h3><TextAreaField label="基础框架" value={project.tetrad[meta.id].foundation} onChange={(value) => updateTetrad(edit, meta.id, "foundation", value)} /><TextAreaField label="独特特点" value={project.tetrad[meta.id].signature} onChange={(value) => updateTetrad(edit, meta.id, "signature", value)} /><TextAreaField label="支持其他支柱" value={project.tetrad[meta.id].support} onChange={(value) => updateTetrad(edit, meta.id, "support", value)} /></div>)}</div></section>
+    <section className="summary-edit-section"><h2>玩家测构思</h2>
+      <EditSentenceBlock title="第一句话" preview={playerFirstPreview(project)}><TextField label="主题" value={project.player.firstLook.theme} onChange={(value) => updatePlayer(edit, "firstLook", "theme", value)} /><TextField label="游戏类型" value={project.player.firstLook.genre} onChange={(value) => updatePlayer(edit, "firstLook", "genre", value)} /><TextField label="关联游戏" value={project.player.firstLook.references} onChange={(value) => updatePlayer(edit, "firstLook", "references", value)} /><TextField label="体验预期" value={project.player.firstLook.expectation} onChange={(value) => updatePlayer(edit, "firstLook", "expectation", value)} /></EditSentenceBlock>
+      <EditSentenceBlock title="第二句话" preview={playerTenPreview(project)}><TextField label="会 / 不会" value={project.player.firstTen.fulfilment} onChange={(value) => updatePlayer(edit, "firstTen", "fulfilment", value)} /><TextField label="还能 / 而是" value={project.player.firstTen.outcome} onChange={(value) => updatePlayer(edit, "firstTen", "outcome", value)} /><TextField label="独特体验" value={project.player.firstTen.uniqueExperience} onChange={(value) => updatePlayer(edit, "firstTen", "uniqueExperience", value)} /><TextField label="目标 / 期待" value={project.player.firstTen.nextGoal} onChange={(value) => updatePlayer(edit, "firstTen", "nextGoal", value)} /></EditSentenceBlock>
+      <EditSentenceBlock title="第三句话" preview={playerArcPreview(project)}><TextField label="机制 / 内容" value={project.player.arc.source} onChange={(value) => updatePlayer(edit, "arc", "source", value)} /><TextField label="游戏体验" value={project.player.arc.finale} onChange={(value) => updatePlayer(edit, "arc", "finale", value)} /></EditSentenceBlock>
+    </section>
+  </div>;
 }
 
-function ChoiceGrid({ label, choices, selected, onToggle, single }: { label: string; choices: Choice[]; selected: string[]; onToggle: (id: string) => void; single?: boolean }) {
-  return <fieldset className="choice-grid-field"><legend>{label}</legend><div className="choice-grid">{choices.map((choice) => <button className={selected.includes(choice.id) ? "selected" : ""} type="button" aria-pressed={selected.includes(choice.id)} key={choice.id} onClick={() => onToggle(choice.id)}><strong>{choice.title}</strong>{choice.summary && <small>{choice.summary}</small>}{single && selected.includes(choice.id) && <Check size={13} />}</button>)}</div></fieldset>;
+type StepProps = { project: ProjectState; edit: (updater: (current: ProjectState) => ProjectState) => void };
+
+function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <label className="field-control"><span>{label}</span><input value={value} placeholder="请输入..." onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function TextField({ label, value, onChange, placeholder, help }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; help?: string }) {
-  const id = `field-${label.replaceAll(" ", "-")}`;
-  return <label className="field-control" htmlFor={id}><span>{label}</span>{help && <small>{help}</small>}<input id={id} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+function TextAreaField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <label className="field-control textarea-field"><span>{label}</span><textarea value={value} placeholder="请输入..." onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
-function TextArea({ label, value, onChange, placeholder, help, large, compact }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; help?: string; large?: boolean; compact?: boolean }) {
-  const id = `area-${label.replaceAll(" ", "-")}`;
-  return <label className={`field-control textarea-control ${large ? "large" : ""} ${compact ? "compact" : ""}`} htmlFor={id}><span>{label}</span>{help && <small>{help}</small>}<textarea id={id} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
+function Tabs({ label, children }: { label: string; children: ReactNode }) { return <div className="mini-tabs" role="tablist" aria-label={label}>{children}</div>; }
+function Tab({ active, label, status, onClick }: { active: boolean; label: string; status: string; onClick: () => void }) { return <button role="tab" aria-selected={active} className={active ? "active" : ""} type="button" onClick={onClick}><strong>{label}</strong><small>{status}</small></button>; }
+function LiveSentence({ children }: { children: ReactNode }) { return <p className="live-sentence">{children}</p>; }
+function Statement({ label, children }: { label: string; children: ReactNode }) { return <article className="summary-statement"><strong>{label}</strong><p>{children}</p></article>; }
+function EditSentenceBlock({ title, preview, children }: { title: string; preview: string; children: ReactNode }) { return <article className="edit-sentence-block"><h3>{title}</h3><LiveSentence>{preview}</LiveSentence><div className="summary-edit-grid">{children}</div></article>; }
+function DetailedExample({ title, children }: { title: string; children: ReactNode }) { return <article className="detailed-example"><h3>{title}</h3>{children}</article>; }
+function ExampleList({ items }: { items: Array<[string, string]> }) { return <div className="example-list">{items.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div>; }
+
+function ReferenceModal({ reference, onClose }: { reference: { title: string; body: ReactNode }; onClose: () => void }) {
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [onClose]);
+  return <div className="reference-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="reference-modal" role="dialog" aria-modal="true" aria-labelledby="reference-title"><header><span>参考</span><button type="button" onClick={onClose} aria-label="关闭参考"><X size={20} /></button></header><h2 id="reference-title">{reference.title}</h2><div>{reference.body}</div></section></div>;
 }
 
-function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
-  return <label className="select-block"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="">选择</option>{options.map((option) => <option value={option} key={option}>{option}</option>)}</select></label>;
+function updateRecord(edit: StepProps["edit"], section: "gameplay" | "experience" | "hypothesis", field: string, value: string) { edit((current) => ({ ...current, [section]: { ...current[section], [field]: value } } as ProjectState)); }
+function updateTetrad(edit: StepProps["edit"], dimension: TetradKey, field: keyof ProjectState["tetrad"][TetradKey], value: string) { edit((current) => ({ ...current, tetrad: { ...current.tetrad, [dimension]: { ...current.tetrad[dimension], [field]: value } } })); }
+function updatePlayer(edit: StepProps["edit"], section: keyof ProjectState["player"], field: string, value: string) { edit((current) => ({ ...current, player: { ...current.player, [section]: { ...current.player[section], [field]: value } } } as ProjectState)); }
+function hasDimensionContent(project: ProjectState, dimension: TetradKey) { return Object.values(project.tetrad[dimension]).some((value) => value.trim()); }
+function hasSentenceContent(project: ProjectState, section: SentenceTab) { return Object.values(project[section]).some((value) => value.trim()); }
+function hasPlayerSectionContent(project: ProjectState, section: PlayerTab) {
+  if (section === "firstLook") return Object.values(project.player.firstLook).some((value) => value.trim());
+  if (section === "firstTen") return [project.player.firstTen.fulfilment, project.player.firstTen.outcome, project.player.firstTen.uniqueExperience, project.player.firstTen.nextGoal].some((value) => value.trim());
+  return [project.player.arc.source, project.player.arc.finale].some((value) => value.trim());
 }
 
-function LoopField({ number, label, prompt, value, onChange }: { number: string; label: string; prompt: string; value: string; onChange: (value: string) => void }) {
-  return <section className="loop-field"><span>{number}</span><div><strong>{label}</strong><small>{prompt}</small><input value={value} onChange={(event) => onChange(event.target.value)} /></div></section>;
-}
-
-function ReferenceHint({ title, children }: { title: string; children: ReactNode }) {
-  return <details className="reference-hint"><summary><span><Lightbulb size={15} />{title}</span><CaretDown className="hint-caret" size={14} /></summary><div className="reference-content">{children}</div></details>;
-}
-
-function InlineNotice({ children }: { children: ReactNode }) {
-  return <div className="inline-notice"><Lightbulb size={15} /><p>{children}</p></div>;
-}
+function preview(value: string, empty = "______") { return value.trim() || empty; }
+function gameplayPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家作为${value(project.gameplay.identity)}，反复${value(project.gameplay.verb)}，以达成${value(project.gameplay.goal)}；但${value(project.gameplay.constraint)}。`; }
+function experiencePreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `为${value(project.experience.audience)}提供${value(project.experience.feeling)}，主要通过${value(project.experience.dynamic)}，而不是依赖${value(project.experience.alternative)}。`; }
+function hypothesisPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `如果让玩家${value(project.hypothesis.mechanism)}，那么他们会${value(project.hypothesis.behavior)}，进而感到${value(project.hypothesis.experience)}；证据是${value(project.hypothesis.signal)}。`; }
+function playerFirstPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家看到游戏名称、介绍图，会认为这是一个关于${value(project.player.firstLook.theme)}的${value(project.player.firstLook.genre)}游戏，会和${value(project.player.firstLook.references)}关联比较，并产生${value(project.player.firstLook.expectation)}。`; }
+function playerTenPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家在体验游戏10分钟内${value(project.player.firstTen.fulfilment)}获得体验预期，${value(project.player.firstTen.outcome)}获得${value(project.player.firstTen.uniqueExperience)}，玩家因此而不会离开游戏，并产生${value(project.player.firstTen.nextGoal)}。`; }
+function playerArcPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家中后期体验的变化是来自${value(project.player.arc.source)}的出现，并最终在游戏结束时，获得${value(project.player.arc.finale)}的终极体验。`; }
+function display(value: string) { return value.trim() || "（空）"; }
