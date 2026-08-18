@@ -15,10 +15,7 @@ import {
 import {
   buildMarkdown,
   emptyProject,
-  experienceSentence,
-  gameplaySentence,
   hasStepContent,
-  hypothesisSentence,
   LEGACY_STORAGE_KEY,
   migrateLegacyProject,
   normalizeProject,
@@ -41,7 +38,7 @@ const tetradMeta: Array<{ id: TetradKey; label: string }> = [
 const sentenceMeta: Array<{ id: SentenceTab; label: string; title: string }> = [
   { id: "gameplay", label: "什么游戏", title: "一句话说明：什么游戏？" },
   { id: "experience", label: "什么体验", title: "一句话：什么体验" },
-  { id: "hypothesis", label: "如何验证", title: "一句话：如何验证" },
+  { id: "hypothesis", label: "如何验证", title: "一句话：体验如何可行？" },
 ];
 
 const playerMeta: Array<{ id: PlayerTab; label: string }> = [
@@ -99,13 +96,31 @@ const references: Partial<Record<StepId, { title: string; body: ReactNode }>> = 
   },
   tetrad: {
     title: "游戏设计四大支柱参考",
-    body: <div className="detailed-examples">
-      <DetailedExample title="《超级马里奥兄弟》"><p><b>叙事：</b>穿越蘑菇王国营救公主，给前进明确方向。</p><p><b>机制：</b>奔跑、跳跃、踩踏和强化状态构成核心循环。</p><p><b>美学：</b>高对比角色、积木式地形与清脆音效让危险可读。</p><p><b>技术：</b>稳定横向卷轴、碰撞和输入响应保证跳跃可信。</p></DetailedExample>
-      <DetailedExample title="《塞尔达传说：旷野之息》"><p><b>叙事：</b>失忆英雄在开放世界中恢复记忆并对抗灾厄。</p><p><b>机制：</b>攀爬、滑翔、物理与元素反应支持多解法。</p><p><b>美学：</b>远景地标、天气和留白引导自主探索。</p><p><b>技术：</b>统一物理与化学系统让不同物件产生可预测组合。</p></DetailedExample>
-      <DetailedExample title="《星露谷物语》"><p><b>叙事：</b>离开公司生活，在小镇重新建立归属。</p><p><b>机制：</b>农耕、采集、关系与时间管理彼此争夺每日资源。</p><p><b>美学：</b>像素季节变化和柔和音乐营造亲密日常。</p><p><b>技术：</b>持久世界状态、日历和大量事件支撑长期生活模拟。</p></DetailedExample>
-      <DetailedExample title="《Portal 2》"><p><b>叙事：</b>被困实验设施的玩家在人工智能监视下逃脱。</p><p><b>机制：</b>用入口和出口重构空间、速度与因果。</p><p><b>美学：</b>洁净实验室与破败后台对照，并用视觉语言标示可交互表面。</p><p><b>技术：</b>无缝传送、物理保持和镜头处理保证空间谜题成立。</p></DetailedExample>
-      <DetailedExample title="《Journey》"><p><b>叙事：</b>无名旅人朝远方山峰前进，与陌生人短暂同行。</p><p><b>机制：</b>移动、滑行、歌声与有限飞行形成无语言协作。</p><p><b>美学：</b>沙海、色彩和音乐随旅程推进表达情绪。</p><p><b>技术：</b>无缝匿名匹配与极简通信保护陌生相遇的纯粹性。</p></DetailedExample>
-    </div>,
+    body: <>
+      <p>每个支柱都按「基础框架、风格特点、对其他的支持」展开，下面以《塞尔达传说：旷野之息》为例。</p>
+      <div className="detailed-examples">
+        <DetailedExample title="叙事">
+          <p><b>基础框架：</b>失忆的勇者林克苏醒后，为夺回四神兽、击败灾厄盖侬并拯救塞尔达公主而重游海拉鲁大陆。</p>
+          <p><b>风格特点：</b>主线极短，把核心剧情拆成可按任意顺序找回的记忆碎片，交给玩家自己拼合。</p>
+          <p><b>对其他的支持：</b>记忆与远景地标共同指引探索方向，为机制的自由攀爬滑翔和美学“所见即可达”提供叙事动机。</p>
+        </DetailedExample>
+        <DetailedExample title="机制">
+          <p><b>基础框架：</b>攀爬、滑翔、战斗与希卡石板能力构成核心行动，元素、天气和物理反应让世界拥有多种解法。</p>
+          <p><b>风格特点：</b>几乎所有机制都建立在一套统一的物理与化学规则上，玩家能组合出设计者没有预设的解法。</p>
+          <p><b>对其他的支持：</b>物理规则支撑技术实现与谜题设计，多种解法反过来强化“自主探索”的叙事和开放美学。</p>
+        </DetailedExample>
+        <DetailedExample title="美学">
+          <p><b>基础框架：</b>远景地标、可攀爬地形、天气与光线共同塑造“看得见就能去”的开放世界氛围。</p>
+          <p><b>风格特点：</b>用低饱和、留白和远景引导视线，以视觉而非文字提示路径与危险。</p>
+          <p><b>对其他的支持：</b>远景地标为机制的攀爬滑翔提供目标，留白与孤寂氛围强化叙事中的探索与记忆主题。</p>
+        </DetailedExample>
+        <DetailedExample title="技术">
+          <p><b>基础框架：</b>统一物理与化学引擎、无缝大世界加载、稳定的攀爬滑翔输入是体验成立的地基。</p>
+          <p><b>风格特点：</b>让不同物件遵循同一套规则相互作用，产生可预测但组合多样的结果。</p>
+          <p><b>对其他的支持：</b>稳定物理与无缝加载支撑机制的多解法，也支撑美学“所见即可达”的可信度。</p>
+        </DetailedExample>
+      </div>
+    </>,
   },
   player: {
     title: "玩家测构思参考",
@@ -282,8 +297,8 @@ function TetradStep({ project, edit }: StepProps) {
     <Tabs label="游戏设计四大支柱">{tetradMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasDimensionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
     <section className="compact-panel">
       <TextAreaField label={`${dimension.label}的基础框架`} value={project.tetrad[dimension.id].foundation} onChange={(value) => updateTetrad(edit, dimension.id, "foundation", value)} />
-      <TextAreaField label={`${dimension.label}的独特特点`} value={project.tetrad[dimension.id].signature} onChange={(value) => updateTetrad(edit, dimension.id, "signature", value)} />
-      <TextAreaField label={`${dimension.label}如何支持其他支柱`} value={project.tetrad[dimension.id].support} onChange={(value) => updateTetrad(edit, dimension.id, "support", value)} />
+      <TextAreaField label={`${dimension.label}的风格特点`} value={project.tetrad[dimension.id].signature} onChange={(value) => updateTetrad(edit, dimension.id, "signature", value)} />
+      <TextAreaField label={`${dimension.label}对其他的支持`} value={project.tetrad[dimension.id].support} onChange={(value) => updateTetrad(edit, dimension.id, "support", value)} />
     </section>
   </div>;
 }
@@ -315,7 +330,7 @@ function SummaryStep({ project, edit, copySummary, downloadSummary, copied }: St
 function SummaryReadView({ project }: { project: ProjectState }) {
   return <>
     <section className="summary-section"><h2>最初想法</h2><p>{display(project.rawIdea)}</p></section>
-    <section className="summary-section"><h2>三句话</h2><Statement label="一句话说明：什么游戏？">{gameplaySentence(project)}</Statement><Statement label="一句话：什么体验">{experienceSentence(project)}</Statement><Statement label="一句话：如何验证">{hypothesisSentence(project)}</Statement></section>
+    <section className="summary-section"><h2>三句话</h2><Statement label="一句话说明：什么游戏？">{gameplayPreview(project, "（空）")}</Statement><Statement label="一句话：什么体验">{experiencePreview(project, "（空）")}</Statement><Statement label="一句话：体验如何可行？">{hypothesisPreview(project, "（空）")}</Statement></section>
     <section className="summary-section"><h2>游戏设计四大支柱</h2><div className="summary-tetrad">{tetradMeta.map((meta) => <article key={meta.id}><strong>{meta.label}</strong><p>{display(project.tetrad[meta.id].foundation)}</p><p>{display(project.tetrad[meta.id].signature)}</p><small>{display(project.tetrad[meta.id].support)}</small></article>)}</div></section>
     <section className="summary-section"><h2>玩家测构思</h2><div className="summary-journey"><article><b>第一句话</b><p>{playerFirstPreview(project, "（空）")}</p></article><article><b>第二句话</b><p>{playerTenPreview(project, "（空）")}</p></article><article><b>第三句话</b><p>{playerArcPreview(project, "（空）")}</p></article></div></section>
   </>;
@@ -327,9 +342,9 @@ function SummaryEditor({ project, edit }: StepProps) {
     <section className="summary-edit-section"><h2>三句话</h2>
       <EditSentenceBlock title="一句话说明：什么游戏？" preview={gameplayPreview(project)}><TextField label="身份" value={project.gameplay.identity} onChange={(value) => updateRecord(edit, "gameplay", "identity", value)} /><TextField label="核心动作" value={project.gameplay.verb} onChange={(value) => updateRecord(edit, "gameplay", "verb", value)} /><TextField label="目标" value={project.gameplay.goal} onChange={(value) => updateRecord(edit, "gameplay", "goal", value)} /><TextField label="约束或反转" value={project.gameplay.constraint} onChange={(value) => updateRecord(edit, "gameplay", "constraint", value)} /></EditSentenceBlock>
       <EditSentenceBlock title="一句话：什么体验" preview={experiencePreview(project)}><TextField label="目标玩家" value={project.experience.audience} onChange={(value) => updateRecord(edit, "experience", "audience", value)} /><TextField label="核心感受" value={project.experience.feeling} onChange={(value) => updateRecord(edit, "experience", "feeling", value)} /><TextField label="关键动态" value={project.experience.dynamic} onChange={(value) => updateRecord(edit, "experience", "dynamic", value)} /><TextField label="不依赖的常规方案" value={project.experience.alternative} onChange={(value) => updateRecord(edit, "experience", "alternative", value)} /></EditSentenceBlock>
-      <EditSentenceBlock title="一句话：如何验证" preview={hypothesisPreview(project)}><TextField label="执行的机制" value={project.hypothesis.mechanism} onChange={(value) => updateRecord(edit, "hypothesis", "mechanism", value)} /><TextField label="产生的行为或策略" value={project.hypothesis.behavior} onChange={(value) => updateRecord(edit, "hypothesis", "behavior", value)} /><TextField label="目标体验" value={project.hypothesis.experience} onChange={(value) => updateRecord(edit, "hypothesis", "experience", value)} /><TextField label="可观察信号" value={project.hypothesis.signal} onChange={(value) => updateRecord(edit, "hypothesis", "signal", value)} /></EditSentenceBlock>
+      <EditSentenceBlock title="一句话：体验如何可行？" preview={hypothesisPreview(project)}><TextField label="执行的机制" value={project.hypothesis.mechanism} onChange={(value) => updateRecord(edit, "hypothesis", "mechanism", value)} /><TextField label="产生的行为或策略" value={project.hypothesis.behavior} onChange={(value) => updateRecord(edit, "hypothesis", "behavior", value)} /><TextField label="目标体验" value={project.hypothesis.experience} onChange={(value) => updateRecord(edit, "hypothesis", "experience", value)} /><TextField label="可观察信号" value={project.hypothesis.signal} onChange={(value) => updateRecord(edit, "hypothesis", "signal", value)} /></EditSentenceBlock>
     </section>
-    <section className="summary-edit-section"><h2>游戏设计四大支柱</h2><div className="summary-edit-pillars">{tetradMeta.map((meta) => <div className="summary-edit-card" key={meta.id}><h3>{meta.label}</h3><TextAreaField label="基础框架" value={project.tetrad[meta.id].foundation} onChange={(value) => updateTetrad(edit, meta.id, "foundation", value)} /><TextAreaField label="独特特点" value={project.tetrad[meta.id].signature} onChange={(value) => updateTetrad(edit, meta.id, "signature", value)} /><TextAreaField label="支持其他支柱" value={project.tetrad[meta.id].support} onChange={(value) => updateTetrad(edit, meta.id, "support", value)} /></div>)}</div></section>
+    <section className="summary-edit-section"><h2>游戏设计四大支柱</h2><div className="summary-edit-pillars">{tetradMeta.map((meta) => <div className="summary-edit-card" key={meta.id}><h3>{meta.label}</h3><TextAreaField label="基础框架" value={project.tetrad[meta.id].foundation} onChange={(value) => updateTetrad(edit, meta.id, "foundation", value)} /><TextAreaField label="风格特点" value={project.tetrad[meta.id].signature} onChange={(value) => updateTetrad(edit, meta.id, "signature", value)} /><TextAreaField label="对其他的支持" value={project.tetrad[meta.id].support} onChange={(value) => updateTetrad(edit, meta.id, "support", value)} /></div>)}</div></section>
     <section className="summary-edit-section"><h2>玩家测构思</h2>
       <EditSentenceBlock title="第一句话" preview={playerFirstPreview(project)}><TextField label="主题" value={project.player.firstLook.theme} onChange={(value) => updatePlayer(edit, "firstLook", "theme", value)} /><TextField label="游戏类型" value={project.player.firstLook.genre} onChange={(value) => updatePlayer(edit, "firstLook", "genre", value)} /><TextField label="关联游戏" value={project.player.firstLook.references} onChange={(value) => updatePlayer(edit, "firstLook", "references", value)} /><TextField label="体验预期" value={project.player.firstLook.expectation} onChange={(value) => updatePlayer(edit, "firstLook", "expectation", value)} /></EditSentenceBlock>
       <EditSentenceBlock title="第二句话" preview={playerTenPreview(project)}><TextField label="会 / 不会" value={project.player.firstTen.fulfilment} onChange={(value) => updatePlayer(edit, "firstTen", "fulfilment", value)} /><TextField label="还能 / 而是" value={project.player.firstTen.outcome} onChange={(value) => updatePlayer(edit, "firstTen", "outcome", value)} /><TextField label="独特体验" value={project.player.firstTen.uniqueExperience} onChange={(value) => updatePlayer(edit, "firstTen", "uniqueExperience", value)} /><TextField label="目标 / 期待" value={project.player.firstTen.nextGoal} onChange={(value) => updatePlayer(edit, "firstTen", "nextGoal", value)} /></EditSentenceBlock>
@@ -352,7 +367,7 @@ function Tabs({ label, children }: { label: string; children: ReactNode }) { ret
 function Tab({ active, label, status, onClick }: { active: boolean; label: string; status: string; onClick: () => void }) { return <button role="tab" aria-selected={active} className={active ? "active" : ""} type="button" onClick={onClick}><strong>{label}</strong><small>{status}</small></button>; }
 function LiveSentence({ children }: { children: ReactNode }) { return <p className="live-sentence">{children}</p>; }
 function Statement({ label, children }: { label: string; children: ReactNode }) { return <article className="summary-statement"><strong>{label}</strong><p>{children}</p></article>; }
-function EditSentenceBlock({ title, preview, children }: { title: string; preview: string; children: ReactNode }) { return <article className="edit-sentence-block"><h3>{title}</h3><LiveSentence>{preview}</LiveSentence><div className="summary-edit-grid">{children}</div></article>; }
+function EditSentenceBlock({ title, preview, children }: { title: string; preview: ReactNode; children: ReactNode }) { return <article className="edit-sentence-block"><h3>{title}</h3><LiveSentence>{preview}</LiveSentence><div className="summary-edit-grid">{children}</div></article>; }
 function DetailedExample({ title, children }: { title: string; children: ReactNode }) { return <article className="detailed-example"><h3>{title}</h3>{children}</article>; }
 function ExampleList({ items }: { items: Array<[string, string]> }) { return <div className="example-list">{items.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div>; }
 
@@ -376,11 +391,14 @@ function hasPlayerSectionContent(project: ProjectState, section: PlayerTab) {
   return [project.player.arc.source, project.player.arc.finale].some((value) => value.trim());
 }
 
-function preview(value: string, empty = "______") { return value.trim() || empty; }
-function gameplayPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家作为${value(project.gameplay.identity)}，反复${value(project.gameplay.verb)}，以达成${value(project.gameplay.goal)}；但${value(project.gameplay.constraint)}。`; }
-function experiencePreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `为${value(project.experience.audience)}提供${value(project.experience.feeling)}，主要通过${value(project.experience.dynamic)}，而不是依赖${value(project.experience.alternative)}。`; }
-function hypothesisPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `如果让玩家${value(project.hypothesis.mechanism)}，那么他们会${value(project.hypothesis.behavior)}，进而感到${value(project.hypothesis.experience)}；证据是${value(project.hypothesis.signal)}。`; }
-function playerFirstPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家看到游戏名称、介绍图，会认为这是一个关于${value(project.player.firstLook.theme)}的${value(project.player.firstLook.genre)}游戏，会和${value(project.player.firstLook.references)}关联比较，并产生${value(project.player.firstLook.expectation)}。`; }
-function playerTenPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家在体验游戏10分钟内${value(project.player.firstTen.fulfilment)}获得体验预期，${value(project.player.firstTen.outcome)}获得${value(project.player.firstTen.uniqueExperience)}，玩家因此而不会离开游戏，并产生${value(project.player.firstTen.nextGoal)}。`; }
-function playerArcPreview(project: ProjectState, empty?: string) { const value = (text: string) => preview(text, empty); return `玩家中后期体验的变化是来自${value(project.player.arc.source)}的出现，并最终在游戏结束时，获得${value(project.player.arc.finale)}的终极体验。`; }
+function Slot({ value, empty = "______" }: { value: string; empty?: string }) {
+  const text = value.trim();
+  return text ? <span className="filled-slot">{text}</span> : <>{empty}</>;
+}
+function gameplayPreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>玩家作为{fill(project.gameplay.identity)}，反复{fill(project.gameplay.verb)}，以{fill(project.gameplay.goal)}；但{fill(project.gameplay.constraint)}。</>; }
+function experiencePreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>为{fill(project.experience.audience)}提供{fill(project.experience.feeling)}，主要通过{fill(project.experience.dynamic)}来实现，而不是依赖{fill(project.experience.alternative)}。</>; }
+function hypothesisPreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>如果让玩家{fill(project.hypothesis.mechanism)}，那么他们会{fill(project.hypothesis.behavior)}，进而感到{fill(project.hypothesis.experience)}；证据是{fill(project.hypothesis.signal)}。</>; }
+function playerFirstPreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>玩家看到游戏名称、介绍图，会认为这是一个关于{fill(project.player.firstLook.theme)}的{fill(project.player.firstLook.genre)}游戏，会和{fill(project.player.firstLook.references)}关联比较，并产生{fill(project.player.firstLook.expectation)}的预期。</>; }
+function playerTenPreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>玩家在体验游戏10分钟内{fill(project.player.firstTen.fulfilment)}获得体验预期，{fill(project.player.firstTen.outcome)}获得{fill(project.player.firstTen.uniqueExperience)}，玩家因此而不会离开游戏，并产生{fill(project.player.firstTen.nextGoal)}。</>; }
+function playerArcPreview(project: ProjectState, empty?: string) { const fill = (value: string) => <Slot value={value} empty={empty} />; return <>玩家中后期体验的变化是来自{fill(project.player.arc.source)}的出现，并最终在游戏结束时，获得{fill(project.player.arc.finale)}的终极体验。</>; }
 function display(value: string) { return value.trim() || "（空）"; }

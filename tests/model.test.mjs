@@ -30,7 +30,9 @@ test("the three sentence templates preserve their distinct design jobs", () => {
   project.hypothesis = { mechanism: "让能源在模块间不可逆转移", behavior: "形成不同的修复优先级", experience: "承担后果的掌控感", signal: "玩家能解释取舍并采用两种以上策略" };
 
   assert.match(gameplaySentence(project), /玩家作为修复机器人/);
+  assert.match(gameplaySentence(project), /废墟，以重建移动城市/);
   assert.match(experienceSentence(project), /喜欢系统实验的玩家/);
+  assert.match(experienceSentence(project), /不断权衡城市模块来实现，而不是依赖线性剧情奖励/);
   assert.match(hypothesisSentence(project), /证据是玩家能解释取舍/);
   assert.equal(isStepComplete(project, "sentences"), true);
   assert.equal(isStepComplete(project, "tetrad"), false);
@@ -49,6 +51,8 @@ test("normalization rejects incompatible data and markdown exports the designed 
   assert.match(markdown, /## 三句话/);
   assert.match(markdown, /## 游戏设计四大支柱/);
   assert.match(markdown, /## 玩家测构思/);
+  assert.match(markdown, /一句话：体验如何可行？/);
+  assert.match(markdown, /并产生（空）的预期/);
   assert.match(markdown, /（空）/);
   assert.equal(hasStepContent(project, "idea"), true);
   assert.equal(hasStepContent(project, "sentences"), false);

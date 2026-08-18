@@ -147,6 +147,7 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 .sentence-panel { padding-top: 34px; }
 .sentence-panel > h1 { margin: 0; font-size: clamp(32px, 4vw, 44px); font-weight: 550; line-height: 1.25; letter-spacing: -.04em; }
 .live-sentence { margin: 22px 0 32px; padding: 18px 20px; border-left: 3px solid var(--accent); background: var(--accent-soft); font-size: 17px; line-height: 1.8; }
+.filled-slot { text-decoration: underline; text-underline-offset: 3px; }
 .player-sentence-panel { padding-top: 8px; }
 .player-sentence-panel .live-sentence { margin-top: 20px; }
 .compact-panel { padding-top: 28px; }

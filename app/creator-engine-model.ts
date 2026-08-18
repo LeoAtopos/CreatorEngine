@@ -241,12 +241,12 @@ export function isStepComplete(project: ProjectState, step: StepId) {
 
 export function gameplaySentence(project: ProjectState) {
   const { identity, verb, goal, constraint } = project.gameplay;
-  return `玩家作为${slot(identity, "身份")}，反复${slot(verb, "核心动词")}，以达成${slot(goal, "目标")}；但${slot(constraint, "约束或反转")}。`;
+  return `玩家作为${slot(identity, "身份")}，反复${slot(verb, "核心动词")}，以${slot(goal, "目标")}；但${slot(constraint, "约束或反转")}。`;
 }
 
 export function experienceSentence(project: ProjectState) {
   const { audience, feeling, dynamic, alternative } = project.experience;
-  return `为${slot(audience, "目标玩家")}提供${slot(feeling, "核心感受")}，主要通过${slot(dynamic, "关键动态")}，而不是依赖${slot(alternative, "常规方案")}。`;
+  return `为${slot(audience, "目标玩家")}提供${slot(feeling, "核心感受")}，主要通过${slot(dynamic, "关键动态")}来实现，而不是依赖${slot(alternative, "常规方案")}。`;
 }
 
 export function hypothesisSentence(project: ProjectState) {
@@ -267,10 +267,10 @@ export function buildMarkdown(project: ProjectState) {
   };
   const tetrad = (Object.keys(project.tetrad) as TetradKey[]).map((key) => {
     const answer = project.tetrad[key];
-    return `### ${labels[key]}\n- 基础框架：${display(answer.foundation)}\n- 独特特点：${display(answer.signature)}\n- 协同作用：${display(answer.support)}`;
+    return `### ${labels[key]}\n- 基础框架：${display(answer.foundation)}\n- 风格特点：${display(answer.signature)}\n- 对其他的支持：${display(answer.support)}`;
   }).join("\n\n");
 
-  return `# ${project.name}\n\n## 最初想法\n${display(project.rawIdea)}\n\n## 三句话\n\n**一句话说明：什么游戏？**\n${gameplaySentence(project)}\n\n**一句话：什么体验**\n${experienceSentence(project)}\n\n**一句话：如何验证**\n${hypothesisSentence(project)}\n\n## 游戏设计四大支柱\n\n${tetrad}\n\n## 玩家测构思\n\n### 第一句话\n玩家看到游戏名称、介绍图，会认为这是一个关于${display(project.player.firstLook.theme)}的${display(project.player.firstLook.genre)}游戏，会和${display(project.player.firstLook.references)}关联比较，并产生${display(project.player.firstLook.expectation)}。\n\n### 第二句话\n玩家在体验游戏10分钟内${display(project.player.firstTen.fulfilment)}获得体验预期，${display(project.player.firstTen.outcome)}获得${display(project.player.firstTen.uniqueExperience)}，玩家因此而不会离开游戏，并产生${display(project.player.firstTen.nextGoal)}。\n\n### 第三句话\n玩家中后期体验的变化是来自${display(project.player.arc.source)}的出现，并最终在游戏结束时，获得${display(project.player.arc.finale)}的终极体验。\n`;
+  return `# ${project.name}\n\n## 最初想法\n${display(project.rawIdea)}\n\n## 三句话\n\n**一句话说明：什么游戏？**\n${gameplaySentence(project)}\n\n**一句话：什么体验**\n${experienceSentence(project)}\n\n**一句话：体验如何可行？**\n${hypothesisSentence(project)}\n\n## 游戏设计四大支柱\n\n${tetrad}\n\n## 玩家测构思\n\n### 第一句话\n玩家看到游戏名称、介绍图，会认为这是一个关于${display(project.player.firstLook.theme)}的${display(project.player.firstLook.genre)}游戏，会和${display(project.player.firstLook.references)}关联比较，并产生${display(project.player.firstLook.expectation)}的预期。\n\n### 第二句话\n玩家在体验游戏10分钟内${display(project.player.firstTen.fulfilment)}获得体验预期，${display(project.player.firstTen.outcome)}获得${display(project.player.firstTen.uniqueExperience)}，玩家因此而不会离开游戏，并产生${display(project.player.firstTen.nextGoal)}。\n\n### 第三句话\n玩家中后期体验的变化是来自${display(project.player.arc.source)}的出现，并最终在游戏结束时，获得${display(project.player.arc.finale)}的终极体验。\n`;
 }
 
 export function hasStepContent(project: ProjectState, step: StepId) {
