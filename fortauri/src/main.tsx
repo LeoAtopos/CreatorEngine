@@ -5,18 +5,20 @@ import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { CreatorEngine } from "../../app/creator-engine";
 import "../../app/globals.css";
 
-window.__CREATOR_ENGINE_SAVE_MARKDOWN__ = async ({ content, defaultFileName }) => {
-  const path = await save({
-    title: "保存游戏设计摘要",
-    defaultPath: defaultFileName,
-    filters: [{ name: "Markdown 文档", extensions: ["md"] }],
-  });
+if ("__TAURI_INTERNALS__" in window) {
+  window.__CREATOR_ENGINE_SAVE_MARKDOWN__ = async ({ content, defaultFileName, dialogTitle, filterName }) => {
+    const path = await save({
+      title: dialogTitle,
+      defaultPath: defaultFileName,
+      filters: [{ name: filterName, extensions: ["md"] }],
+    });
 
-  if (!path) return false;
+    if (!path) return false;
 
-  await writeTextFile(path, content);
-  return true;
-};
+    await writeTextFile(path, content);
+    return true;
+  };
+}
 
 const root = document.getElementById("root");
 

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
-const title = "创作引擎 · 游戏构思向导";
-const description = "用三句话、游戏设计四大支柱与游戏侧构思，把最初想法整理成可编辑的设计摘要。";
+const title = "CreatorEngine · Game Design Guide";
+const description = "Turn an initial game idea into an editable design summary through three sentences, four design pillars, and a player-side concept.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       title,
       description,
-      images: [{ url: socialImage, width: 1728, height: 909, alt: "创作引擎：把游戏想法一步一步说清楚" }],
+      images: [{ url: socialImage, width: 1728, height: 909, alt: "CreatorEngine: make a game idea clear, step by step" }],
     },
     twitter: { card: "summary_large_image", title, description, images: [socialImage] },
   };
@@ -32,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

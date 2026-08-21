@@ -35,7 +35,7 @@ export type PlayerReferenceExample = {
     expectation: string;
   };
   firstTen: {
-    fulfilment: "会" | "不会";
+    fulfilment: string;
     outcome: string;
     uniqueExperience: string;
     nextGoal: string;

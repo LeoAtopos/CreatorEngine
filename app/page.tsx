@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { CreatorEngine } from "./creator-engine";
 
 export const metadata: Metadata = {
-  title: "创作引擎 · 游戏构思向导",
-  description: "用三句话、游戏设计四大支柱和游戏侧构思，把模糊游戏想法变成可讨论、可验证的设计摘要。",
+  title: "CreatorEngine · Game Design Guide",
+  description: "Turn a vague game idea into a discussable, testable design summary through three sentences, four design pillars, and a player-side concept.",
 };
 
 export default function Home() {

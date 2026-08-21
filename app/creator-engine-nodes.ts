@@ -7,6 +7,8 @@ export type StepMeta = {
   title: string;
 };
 
+export type StepLanguage = "zh" | "en";
+
 export const steps: StepMeta[] = [
   { id: "welcome", index: 0, short: "欢迎", title: "让一个模糊想法，逐渐成为可以制作的游戏。" },
   { id: "idea", index: 1, short: "最初想法", title: "先保留最初的火花。" },
@@ -15,6 +17,19 @@ export const steps: StepMeta[] = [
   { id: "player", index: 4, short: "游戏侧构思", title: "游戏侧构思" },
   { id: "summary", index: 5, short: "设计摘要", title: "设计摘要" },
 ];
+
+const englishSteps: StepMeta[] = [
+  { id: "welcome", index: 0, short: "Welcome", title: "Turn a vague idea into a game you can build." },
+  { id: "idea", index: 1, short: "Initial Idea", title: "Keep the original spark." },
+  { id: "sentences", index: 2, short: "Three Sentences", title: "Explain the game's core in three sentences." },
+  { id: "tetrad", index: 3, short: "Four Pillars", title: "Four Pillars of Game Design" },
+  { id: "player", index: 4, short: "Player Side", title: "Player-Side Concept" },
+  { id: "summary", index: 5, short: "Design Summary", title: "Design Summary" },
+];
+
+export function localizedSteps(language: StepLanguage): StepMeta[] {
+  return language === "zh" ? steps : englishSteps;
+}
 
 export const creationSteps = steps.filter((step) => step.id !== "welcome");
 

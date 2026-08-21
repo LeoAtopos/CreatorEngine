@@ -13,6 +13,7 @@ import {
 } from "../app/creator-engine-model.ts";
 import { creationSteps, nextStep, previousStep, steps } from "../app/creator-engine-nodes.ts";
 import { tetradReferenceGames } from "../app/creator-engine-tetrad-references.ts";
+import { tetradReferenceGamesEn } from "../app/creator-engine-tetrad-references-en.ts";
 
 test("all reference sections use the same ten games in one fixed order", () => {
   assert.deepEqual(tetradReferenceGames.map((game) => game.title), [
@@ -46,6 +47,25 @@ test("all reference sections use the same ten games in one fixed order", () => {
       assert.equal(Object.keys(example.support).length, 3, `${game.title} ${pillar} needs three support notes`);
       assert.equal(Object.hasOwn(example.support, pillar), false, `${game.title} ${pillar} must only support the other pillars`);
     }
+  }
+
+  assert.equal(tetradReferenceGamesEn.length, tetradReferenceGames.length);
+  assert.deepEqual(tetradReferenceGamesEn.map((game) => game.title), [
+    "Steins;Gate",
+    "The Legend of Zelda: Breath of the Wild",
+    "Hades",
+    "Slay the Spire",
+    "It Takes Two",
+    "Overwatch",
+    "Stardew Valley",
+    "Limbo",
+    "Genshin Impact",
+    "Rocket League",
+  ]);
+  for (const game of tetradReferenceGamesEn) {
+    assert.equal(Object.keys(game.examples).length, 4);
+    assert.ok(Object.values(game.sentence).every((fields) => Object.values(fields).every(Boolean)));
+    assert.ok(Object.values(game.player).every((fields) => Object.values(fields).every(Boolean)));
   }
 });
 
@@ -127,6 +147,29 @@ test("downloaded markdown round-trips all editable data", () => {
   assert.equal(loaded.rawIdea, project.rawIdea);
   assert.deepEqual(loaded.gameplay, project.gameplay);
   assert.deepEqual(loaded.tetrad.narrative, project.tetrad.narrative);
+});
+
+test("English markdown exports and legacy-style imports remain editable", () => {
+  const project = emptyProject("en");
+  project.name = "Loop City";
+  project.rawIdea = "Repairing one street rearranges another.";
+  project.gameplay = { identity: "a city restorer", verb: "rebuild shifting blocks", goal: "bring every resident home", constraint: "the map changes each night" };
+  project.tetrad.narrative.foundation = "recursive city mystery";
+  project.tetrad.narrative.support.mechanics = "Every rearrangement reveals a consequence.";
+
+  const markdown = buildMarkdown(project, "en");
+  assert.match(markdown, /## Three Sentences/);
+  assert.match(markdown, /## Four Pillars of Game Design/);
+  assert.match(markdown, /Narrative's guidance, support, or requirements for Mechanics/);
+  assert.match(markdown, /As a city restorer, the player repeatedly rebuild shifting blocks/);
+
+  const withoutMetadata = markdown.replace(/\n<!-- creator-engine-data:[\s\S]*?-->\n?$/, "\n");
+  const loaded = parseMarkdownProject(withoutMetadata, "en");
+  assert.equal(loaded.name, project.name);
+  assert.equal(loaded.rawIdea, project.rawIdea);
+  assert.deepEqual(loaded.gameplay, project.gameplay);
+  assert.equal(loaded.tetrad.narrative.foundation, project.tetrad.narrative.foundation);
+  assert.equal(loaded.tetrad.narrative.support.mechanics, project.tetrad.narrative.support.mechanics);
 });
 
 test("markdown loader supports exports created before embedded project data", () => {

@@ -1,40 +1,44 @@
-# CreatorEngine / 创作引擎
+# CreatorEngine
 
-一个在本地运行的游戏构思向导。它把模糊想法沿着一条短而明确的路径，整理成可以讨论、修改和验证的设计摘要。
+[中文说明](README.zh-CN.md)
 
-## 直接使用
+CreatorEngine is a local-first game concept guide. It turns a vague idea into a design summary that a creator can discuss, revise, test, and continue editing.
 
-- 在线网页版：[打开 CreatorEngine](https://leoatopos.github.io/CreatorEngine/)
-- Windows 便携版：[下载 CreatorEngine.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine.exe)
-- Windows x64 安装版：[下载 CreatorEngine_x64-setup.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine_x64-setup.exe)
+The interface automatically uses Chinese when the operating system language starts with `zh`; otherwise it uses English. A language button in the top navigation lets you switch at any time, and the preference is saved on the current device.
 
-## 创作流程
+## Use it now
 
-1. 最初想法：保留作者最初的火花。
-2. 三句话：用标签页填写“什么游戏、什么体验、如何验证”，并实时查看完整句子。
-3. 游戏设计四大支柱：分别检查叙事、机制、美学和技术。
-4. 游戏侧构思：用三句话检查第一眼、前十分钟、中后期与最终体验。
-5. 设计摘要：在同一页面查看、编辑、复制或下载完整 Markdown 文档。
+- Web app: [Open CreatorEngine](https://leoatopos.github.io/CreatorEngine/)
+- Windows portable app: [Download CreatorEngine.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine.exe)
+- Windows x64 installer: [Download CreatorEngine_x64-setup.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine_x64-setup.exe)
 
-填写内容通过浏览器 `localStorage` 保存在当前设备，不需要登录，也不会发送到外部服务。
+## Design flow
 
-## 本地运行
+1. Initial Idea — preserve the original creative spark.
+2. Three Sentences — define the game, target experience, and testable design hypothesis.
+3. Four Pillars — align narrative, mechanics, aesthetics, and technology, including each pillar's guidance, support, or requirements for the others.
+4. Player-Side Concept — examine first impression, the first ten minutes, mid-to-late progression, and the final experience.
+5. Design Summary — review, edit, copy, or download the complete Markdown document.
+
+All project data is stored in browser `localStorage` on the current device. No sign-in is required and no project content is sent to an external service. Downloaded Markdown files can be loaded again to continue editing.
+
+## Run locally
 
 ```bash
 npm install
 npm run dev -- --port 3100
 ```
 
-打开 `http://localhost:3100/`。
+Open `http://localhost:3100/`.
 
-生产模式：
+Production mode:
 
 ```bash
 npm run build
 npm run start -- --port 3100
 ```
 
-## 检查
+## Check
 
 ```bash
 npm run lint
