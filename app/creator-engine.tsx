@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import {
   ArrowCounterClockwise,
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   DownloadSimple,
   FloppyDisk,
   PencilSimple,
+  UploadSimple,
   X,
 } from "@phosphor-icons/react";
 import {
@@ -19,14 +20,17 @@ import {
   LEGACY_STORAGE_KEY,
   migrateLegacyProject,
   normalizeProject,
+  parseMarkdownProject,
   STORAGE_KEY,
   type ProjectState,
   type TetradKey,
 } from "./creator-engine-model";
-import { creationSteps, nextStep, previousStep, stepMap, type StepId } from "./creator-engine-nodes";
+import { creationSteps, stepMap, type StepId } from "./creator-engine-nodes";
+import { tetradReferenceGames } from "./creator-engine-tetrad-references";
 
 type SentenceTab = "gameplay" | "experience" | "hypothesis";
 type PlayerTab = "firstLook" | "firstTen" | "arc";
+type ReferenceContent = { title: string; body: ReactNode };
 
 const tetradMeta: Array<{ id: TetradKey; label: string }> = [
   { id: "narrative", label: "叙事" },
@@ -47,7 +51,11 @@ const playerMeta: Array<{ id: PlayerTab; label: string }> = [
   { id: "arc", label: "第三句话" },
 ];
 
-const references: Partial<Record<StepId, { title: string; body: ReactNode }>> = {
+const sentenceOrder: SentenceTab[] = ["gameplay", "experience", "hypothesis"];
+const tetradOrder: TetradKey[] = ["narrative", "mechanics", "aesthetics", "technology"];
+const playerOrder: PlayerTab[] = ["firstLook", "firstTen", "arc"];
+
+const references: Partial<Record<StepId, ReferenceContent>> = {
   idea: {
     title: "最初想法参考",
     body: <ExampleList items={[
@@ -61,76 +69,30 @@ const references: Partial<Record<StepId, { title: string; body: ReactNode }>> = 
   },
   sentences: {
     title: "三句话参考",
-    body: <div className="detailed-examples">
-      <DetailedExample title="《超级马里奥兄弟》">
-        <p><b>什么游戏：</b>玩家作为营救公主的马里奥，反复奔跑、跳跃和踩踏敌人，以穿越关卡抵达终点；但有限时间、地形与敌人持续制造失误风险。</p>
-        <p><b>什么体验：</b>为喜欢即时挑战的玩家提供从试探到熟练掌控的成就感，主要通过清晰的跳跃反馈与关卡节奏，而不是依赖数值养成。</p>
-        <p><b>如何验证：</b>如果让障碍提前可见并保持跳跃反馈稳定，那么玩家会在失败后调整起跳位置，进而感到自己正在变熟练；证据是玩家能解释失败并在三次内改变策略。</p>
-      </DetailedExample>
-      <DetailedExample title="《俄罗斯方块》">
-        <p><b>什么游戏：</b>玩家反复旋转和放置下落方块，以填满并消除横行；但空间持续缩小且速度不断加快。</p>
-        <p><b>什么体验：</b>为短时游玩的玩家提供秩序建立与压力升级的专注感，主要通过形状预测和空间取舍，而不是依赖故事奖励。</p>
-        <p><b>如何验证：</b>如果让玩家提前看见下一个方块，那么他们会为未来形状预留空间，进而感到计划正在生效；证据是高分玩家明显减少随机填缝。</p>
-      </DetailedExample>
-      <DetailedExample title="《我的世界》">
-        <p><b>什么游戏：</b>玩家作为方块世界的探索者，反复采集、合成和建造，以实现自定目标；但资源、昼夜和危险生物限制行动。</p>
-        <p><b>什么体验：</b>为喜欢创造和探索的玩家提供“这是我的世界”的自主感，主要通过可组合材料和开放目标，而不是依赖固定任务链。</p>
-        <p><b>如何验证：</b>如果材料规则足够一致，那么玩家会自发组合系统并设定个人工程，进而感到拥有创造权；证据是玩家离开教程后仍主动制定并完成目标。</p>
-      </DetailedExample>
-      <DetailedExample title="《星露谷物语》">
-        <p><b>什么游戏：</b>玩家作为继承农场的新居民，反复种植、经营和交往，以重建生活与社区；但每日时间、体力和季节迫使玩家取舍。</p>
-        <p><b>什么体验：</b>为偏好舒缓成长的玩家提供可掌控生活的安定感，主要通过日程安排与关系积累，而不是依赖高压竞争。</p>
-        <p><b>如何验证：</b>如果每天都给出多个有意义的小目标，那么玩家会形成自己的生活节奏，进而感到日常值得期待；证据是玩家能说明明天最想先做的事。</p>
-      </DetailedExample>
-      <DetailedExample title="《Among Us》">
-        <p><b>什么游戏：</b>玩家作为船员或内鬼，反复完成任务、观察和讨论，以找出内鬼或隐藏身份；但信息不完整且发言可能欺骗。</p>
-        <p><b>什么体验：</b>为朋友群体提供怀疑、表演和反转的社交戏剧，主要通过不对称信息与公开讨论，而不是依赖复杂操作。</p>
-        <p><b>如何验证：</b>如果目击信息始终不完整，那么玩家会主动结盟、撒谎和质询，进而感到每局都产生独特故事；证据是结算后玩家仍会复盘关键发言。</p>
-      </DetailedExample>
-      <DetailedExample title="《健身环大冒险》">
-        <p><b>什么游戏：</b>玩家作为冒险者，反复用身体动作移动和战斗，以推进旅程；但体力和动作标准限制连续输出。</p>
-        <p><b>什么体验：</b>为想轻松运动的玩家提供“我完成了一次冒险”的积极感，主要通过动作映射和即时鼓励，而不是依赖枯燥计数。</p>
-        <p><b>如何验证：</b>如果运动动作被包装成可见的战斗效果，那么玩家会为完成关卡主动坚持动作，进而感到运动有目标；证据是玩家在疲劳时仍选择完成当前战斗。</p>
-      </DetailedExample>
-    </div>,
-  },
-  tetrad: {
-    title: "游戏设计四大支柱参考",
-    body: <>
-      <p>每个支柱都按「基础框架、风格特点、对其他的支持」展开，下面以《塞尔达传说：旷野之息》为例。</p>
-      <div className="detailed-examples">
-        <DetailedExample title="叙事">
-          <p><b>基础框架：</b>失忆的勇者林克苏醒后，为夺回四神兽、击败灾厄盖侬并拯救塞尔达公主而重游海拉鲁大陆。</p>
-          <p><b>风格特点：</b>主线极短，把核心剧情拆成可按任意顺序找回的记忆碎片，交给玩家自己拼合。</p>
-          <p><b>对其他的支持：</b>记忆与远景地标共同指引探索方向，为机制的自由攀爬滑翔和美学“所见即可达”提供叙事动机。</p>
-        </DetailedExample>
-        <DetailedExample title="机制">
-          <p><b>基础框架：</b>攀爬、滑翔、战斗与希卡石板能力构成核心行动，元素、天气和物理反应让世界拥有多种解法。</p>
-          <p><b>风格特点：</b>几乎所有机制都建立在一套统一的物理与化学规则上，玩家能组合出设计者没有预设的解法。</p>
-          <p><b>对其他的支持：</b>物理规则支撑技术实现与谜题设计，多种解法反过来强化“自主探索”的叙事和开放美学。</p>
-        </DetailedExample>
-        <DetailedExample title="美学">
-          <p><b>基础框架：</b>远景地标、可攀爬地形、天气与光线共同塑造“看得见就能去”的开放世界氛围。</p>
-          <p><b>风格特点：</b>用低饱和、留白和远景引导视线，以视觉而非文字提示路径与危险。</p>
-          <p><b>对其他的支持：</b>远景地标为机制的攀爬滑翔提供目标，留白与孤寂氛围强化叙事中的探索与记忆主题。</p>
-        </DetailedExample>
-        <DetailedExample title="技术">
-          <p><b>基础框架：</b>统一物理与化学引擎、无缝大世界加载、稳定的攀爬滑翔输入是体验成立的地基。</p>
-          <p><b>风格特点：</b>让不同物件遵循同一套规则相互作用，产生可预测但组合多样的结果。</p>
-          <p><b>对其他的支持：</b>稳定物理与无缝加载支撑机制的多解法，也支撑美学“所见即可达”的可信度。</p>
-        </DetailedExample>
-      </div>
-    </>,
+    body: <><p>以下 10 款游戏与四大支柱保持相同顺序，每款都分别示范“什么游戏、什么体验、如何验证”。</p><SentenceReferenceExamples /></>,
   },
   player: {
-    title: "玩家测构思参考",
-    body: <div className="detailed-examples">
-      <DetailedExample title="《超级马里奥兄弟》"><p><b>第一句：</b>玩家看到水管、蘑菇和马里奥，会认为这是平台跳跃游戏，并期待轻快闯关。</p><p><b>第二句：</b>十分钟内，玩家会兑现跳跃闯关预期，还能获得发现隐藏砖块与成长状态的惊喜，并产生抵达下一座城堡的目标。</p><p><b>第三句：</b>中后期变化来自移动平台、水下关和更强敌人，结尾获得熟练穿越高压关卡的终极体验。</p></DetailedExample>
-      <DetailedExample title="《俄罗斯方块》"><p><b>第一句：</b>玩家看到几何方块和井口，会认为这是空间整理益智游戏，并期待消除带来的整洁感。</p><p><b>第二句：</b>十分钟内，玩家会兑现拼合消除预期，还会获得为长条预留空间的策略感，并产生刷新最高分的目标。</p><p><b>第三句：</b>中后期变化来自速度提升与堆叠压力，结尾获得在失控边缘维持秩序的终极体验。</p></DetailedExample>
-      <DetailedExample title="《我的世界》"><p><b>第一句：</b>玩家看到方块世界，会认为这是建造与生存游戏，并联想到乐高式自由创造。</p><p><b>第二句：</b>十分钟内，玩家会获得采集与搭建预期，还会经历夜晚降临带来的生存压力，并产生建造安全住所的目标。</p><p><b>第三句：</b>中后期变化来自稀有材料、自动化与异世界，结尾获得“这个世界由我塑造”的终极体验。</p></DetailedExample>
-      <DetailedExample title="《星露谷物语》"><p><b>第一句：</b>玩家看到农场与小镇居民，会认为这是轻松经营生活游戏，并期待治愈与成长。</p><p><b>第二句：</b>十分钟内，玩家会获得播种经营预期，还会发现时间和体力带来的日程取舍，并产生迎接第一次收获的目标。</p><p><b>第三句：</b>中后期变化来自季节、关系和社区工程，结尾获得在小镇建立归属的终极体验。</p></DetailedExample>
-      <DetailedExample title="《Among Us》"><p><b>第一句：</b>玩家看到太空船员和任务场景，会认为这是多人合作游戏，并期待共同修复飞船。</p><p><b>第二句：</b>十分钟内，玩家不会只获得合作预期，而会获得互相怀疑与身份表演的独特体验，并产生证明自己或操纵投票的目标。</p><p><b>第三句：</b>中后期变化来自人员减少和证词累积，结尾获得真相揭晓与集体复盘的终极体验。</p></DetailedExample>
-    </div>,
+    title: "游戏侧构思参考",
+    body: <><p>以下 10 款游戏与三句话、四大支柱保持相同顺序，每款都分别示范玩家看到游戏、体验十分钟和进入中后期时的变化。</p><PlayerReferenceExamples /></>,
+  },
+};
+
+const tetradReferences: Record<TetradKey, ReferenceContent> = {
+  narrative: {
+    title: "叙事支柱参考",
+    body: <><p>基础框架只写一个简短的叙事主题或类型短语，再说明它如何分别支持另外三根支柱。以下 10 款游戏与其他支柱保持相同顺序，便于横向比较。</p><TetradReferenceExamples pillar="narrative" /></>,
+  },
+  mechanics: {
+    title: "机制支柱参考",
+    body: <><p>基础框架只写一个简短的玩法类型或核心机制短语，再说明它如何分别支持另外三根支柱。以下 10 款游戏与其他支柱保持相同顺序，便于横向比较。</p><TetradReferenceExamples pillar="mechanics" /></>,
+  },
+  aesthetics: {
+    title: "美学支柱参考",
+    body: <><p>基础框架只写一个简短的视觉、听觉或整体风格短语，再说明它如何分别支持另外三根支柱。以下 10 款游戏与其他支柱保持相同顺序，便于横向比较。</p><TetradReferenceExamples pillar="aesthetics" /></>,
+  },
+  technology: {
+    title: "技术支柱参考",
+    body: <><p>基础框架只写一个简短的引擎、平台或关键技术方案短语，再说明它如何分别支持另外三根支柱。以下 10 款游戏与其他支柱保持相同顺序，便于横向比较。</p><TetradReferenceExamples pillar="technology" /></>,
   },
 };
 
@@ -138,7 +100,12 @@ export function CreatorEngine() {
   const [project, setProject] = useState<ProjectState>(() => emptyProject());
   const [hydrated, setHydrated] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [referenceOpen, setReferenceOpen] = useState<StepId | null>(null);
+  const [referenceOpen, setReferenceOpen] = useState<ReferenceContent | null>(null);
+  const [activeSentence, setActiveSentence] = useState<SentenceTab>("gameplay");
+  const [activeTetrad, setActiveTetrad] = useState<TetradKey>("narrative");
+  const [activePlayer, setActivePlayer] = useState<PlayerTab>("firstLook");
+  const [loadNotice, setLoadNotice] = useState("");
+  const loadInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -163,20 +130,79 @@ export function CreatorEngine() {
 
   const current = stepMap[project.currentStep];
   const progress = project.currentStep === "welcome" ? 0 : Math.round((current.index / creationSteps.length) * 100);
+  const currentReference = project.currentStep === "tetrad" ? tetradReferences[activeTetrad] : references[project.currentStep];
 
   function edit(updater: (current: ProjectState) => ProjectState) {
     setProject((currentProject) => ({ ...updater(currentProject), updatedAt: new Date().toISOString() }));
   }
 
-  function go(step: StepId) {
+  function go(step: StepId, position: "first" | "last" = "first") {
+    if (step === "sentences") setActiveSentence(position === "last" ? sentenceOrder.at(-1)! : sentenceOrder[0]);
+    if (step === "tetrad") setActiveTetrad(position === "last" ? tetradOrder.at(-1)! : tetradOrder[0]);
+    if (step === "player") setActivePlayer(position === "last" ? playerOrder.at(-1)! : playerOrder[0]);
     setProject((currentProject) => ({ ...currentProject, currentStep: step, updatedAt: new Date().toISOString() }));
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function advanceWithin<T>(order: T[], active: T, setActive: (value: T) => void) {
+    const index = order.indexOf(active);
+    if (index < order.length - 1) {
+      setActive(order[index + 1]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return true;
+    }
+    return false;
+  }
+
+  function retreatWithin<T>(order: T[], active: T, setActive: (value: T) => void) {
+    const index = order.indexOf(active);
+    if (index > 0) {
+      setActive(order[index - 1]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return true;
+    }
+    return false;
+  }
+
+  function goNextPage() {
+    if (project.currentStep === "idea") return go("sentences");
+    if (project.currentStep === "sentences") return advanceWithin(sentenceOrder, activeSentence, setActiveSentence) || Boolean(go("tetrad"));
+    if (project.currentStep === "tetrad") return advanceWithin(tetradOrder, activeTetrad, setActiveTetrad) || Boolean(go("player"));
+    if (project.currentStep === "player") return advanceWithin(playerOrder, activePlayer, setActivePlayer) || Boolean(go("summary"));
+  }
+
+  function goPreviousPage() {
+    if (project.currentStep === "idea") return go("welcome");
+    if (project.currentStep === "sentences") return retreatWithin(sentenceOrder, activeSentence, setActiveSentence) || Boolean(go("idea"));
+    if (project.currentStep === "tetrad") return retreatWithin(tetradOrder, activeTetrad, setActiveTetrad) || Boolean(go("sentences", "last"));
+    if (project.currentStep === "player") return retreatWithin(playerOrder, activePlayer, setActivePlayer) || Boolean(go("tetrad", "last"));
+    if (project.currentStep === "summary") return go("player", "last");
   }
 
   function restart() {
     if (!window.confirm("重新开始会清除这台设备上当前项目的全部填写内容，确定继续吗？")) return;
     window.localStorage.removeItem(STORAGE_KEY);
     setProject(emptyProject());
+  }
+
+  async function loadMarkdown(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const loaded = parseMarkdownProject(await file.text());
+      if (hasStepContent(project, "summary") && !window.confirm("载入会替换当前项目的填写内容，确定继续吗？")) return;
+      setProject({ ...loaded, updatedAt: new Date().toISOString() });
+      setActiveSentence("gameplay");
+      setActiveTetrad("narrative");
+      setActivePlayer("firstLook");
+      setLoadNotice(`已载入 ${file.name}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "无法读取这个文件";
+      setLoadNotice("载入失败");
+      window.alert(`载入失败：${message}`);
+    }
   }
 
   async function copySummary() {
@@ -207,7 +233,9 @@ export function CreatorEngine() {
         <span>{progress}%</span>
       </div>
       <div className="ce-actions">
-        <span className="save-state"><FloppyDisk size={17} />{hydrated ? "已保存" : "读取中"}</span>
+        <input ref={loadInput} className="load-input" type="file" accept=".md,text/markdown,text/plain" onChange={loadMarkdown} />
+        <button className="load-button" type="button" onClick={() => loadInput.current?.click()}><UploadSimple size={18} />载入</button>
+        <span className="save-state" title={loadNotice || undefined}><FloppyDisk size={17} />{loadNotice || (hydrated ? "已保存" : "读取中")}</span>
         <button type="button" onClick={restart}><ArrowCounterClockwise size={18} />重新开始</button>
       </div>
     </header>
@@ -231,16 +259,23 @@ export function CreatorEngine() {
       {project.currentStep === "welcome" ? <Welcome project={project} edit={edit} go={go} /> :
         <article className="step-page">
           {project.currentStep !== "sentences" && <header className="step-heading"><h1>{current.title}</h1></header>}
-          <div className="step-content">{renderStep(project.currentStep, project, edit, copySummary, downloadSummary, copied)}</div>
-          {references[project.currentStep] && <button className="reference-trigger" type="button" onClick={() => setReferenceOpen(project.currentStep)}>参考</button>}
+          <div className="step-content">{renderStep(project.currentStep, project, edit, copySummary, downloadSummary, copied, {
+            sentence: activeSentence,
+            setSentence: setActiveSentence,
+            tetrad: activeTetrad,
+            setTetrad: setActiveTetrad,
+            player: activePlayer,
+            setPlayer: setActivePlayer,
+          })}</div>
+          {currentReference && <button className="reference-trigger" type="button" onClick={() => setReferenceOpen(currentReference)}>参考</button>}
           <footer className="step-navigation">
-            <button className="back-button" type="button" onClick={() => go(previousStep(project.currentStep))}><ArrowLeft size={19} />上一步</button>
-            {project.currentStep !== "summary" && <button className="next-button" type="button" onClick={() => go(nextStep(project.currentStep))}>下一步<ArrowRight size={19} /></button>}
+            <button className="back-button" type="button" onClick={goPreviousPage}><ArrowLeft size={19} />上一步</button>
+            {project.currentStep !== "summary" && <button className="next-button" type="button" onClick={goNextPage}>下一步<ArrowRight size={19} /></button>}
           </footer>
         </article>}
     </main>
 
-    {referenceOpen && references[referenceOpen] && <ReferenceModal reference={references[referenceOpen]!} onClose={() => setReferenceOpen(null)} />}
+    {referenceOpen && <ReferenceModal reference={referenceOpen} onClose={() => setReferenceOpen(null)} />}
   </div>;
 }
 
@@ -252,12 +287,21 @@ function Welcome({ project, edit, go }: StepProps & { go: (step: StepId) => void
   </section>;
 }
 
-function renderStep(step: StepId, project: ProjectState, edit: StepProps["edit"], copySummary: () => Promise<void>, downloadSummary: () => void, copied: boolean) {
+type SubpageProps = {
+  sentence: SentenceTab;
+  setSentence: (value: SentenceTab) => void;
+  tetrad: TetradKey;
+  setTetrad: (value: TetradKey) => void;
+  player: PlayerTab;
+  setPlayer: (value: PlayerTab) => void;
+};
+
+function renderStep(step: StepId, project: ProjectState, edit: StepProps["edit"], copySummary: () => Promise<void>, downloadSummary: () => void, copied: boolean, subpage: SubpageProps) {
   switch (step) {
     case "idea": return <IdeaStep project={project} edit={edit} />;
-    case "sentences": return <SentenceTabsStep project={project} edit={edit} />;
-    case "tetrad": return <TetradStep project={project} edit={edit} />;
-    case "player": return <PlayerStep project={project} edit={edit} />;
+    case "sentences": return <SentenceTabsStep project={project} edit={edit} active={subpage.sentence} setActive={subpage.setSentence} />;
+    case "tetrad": return <TetradStep project={project} edit={edit} active={subpage.tetrad} setActive={subpage.setTetrad} />;
+    case "player": return <PlayerStep project={project} edit={edit} active={subpage.player} setActive={subpage.setPlayer} />;
     case "summary": return <SummaryStep project={project} edit={edit} copySummary={copySummary} downloadSummary={downloadSummary} copied={copied} />;
     default: return null;
   }
@@ -267,8 +311,7 @@ function IdeaStep({ project, edit }: StepProps) {
   return <label className="large-field"><span>最初想法</span><textarea value={project.rawIdea} onChange={(event) => edit((current) => ({ ...current, rawIdea: event.target.value }))} placeholder="请输入..." /></label>;
 }
 
-function SentenceTabsStep({ project, edit }: StepProps) {
-  const [active, setActive] = useState<SentenceTab>("gameplay");
+function SentenceTabsStep({ project, edit, active, setActive }: StepProps & { active: SentenceTab; setActive: (value: SentenceTab) => void }) {
   const meta = sentenceMeta.find((item) => item.id === active)!;
   return <div className="compact-workspace sentence-workspace">
     <Tabs label="三句话">{sentenceMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasSentenceContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
@@ -290,23 +333,21 @@ function SentenceTabsStep({ project, edit }: StepProps) {
   </div>;
 }
 
-function TetradStep({ project, edit }: StepProps) {
-  const [active, setActive] = useState<TetradKey>("narrative");
+function TetradStep({ project, edit, active, setActive }: StepProps & { active: TetradKey; setActive: (value: TetradKey) => void }) {
   const dimension = tetradMeta.find((item) => item.id === active)!;
   return <div className="compact-workspace">
     <Tabs label="游戏设计四大支柱">{tetradMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasDimensionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
     <section className="compact-panel">
-      <TextAreaField label={`${dimension.label}的基础框架`} value={project.tetrad[dimension.id].foundation} onChange={(value) => updateTetrad(edit, dimension.id, "foundation", value)} />
+      <TextField label={`${dimension.label}的基础框架（简短短语）`} placeholder={foundationPlaceholder(dimension.id)} value={project.tetrad[dimension.id].foundation} onChange={(value) => updateTetrad(edit, dimension.id, "foundation", value)} />
       <TextAreaField label={`${dimension.label}的风格特点`} value={project.tetrad[dimension.id].signature} onChange={(value) => updateTetrad(edit, dimension.id, "signature", value)} />
-      <TextAreaField label={`${dimension.label}对其他的支持`} value={project.tetrad[dimension.id].support} onChange={(value) => updateTetrad(edit, dimension.id, "support", value)} />
+      {tetradMeta.filter((target) => target.id !== dimension.id).map((target) => <TextAreaField key={target.id} label={`${dimension.label}对${target.label}的支持`} value={project.tetrad[dimension.id].support[target.id]} onChange={(value) => updateTetradSupport(edit, dimension.id, target.id, value)} />)}
     </section>
   </div>;
 }
 
-function PlayerStep({ project, edit }: StepProps) {
-  const [active, setActive] = useState<PlayerTab>("firstLook");
+function PlayerStep({ project, edit, active, setActive }: StepProps & { active: PlayerTab; setActive: (value: PlayerTab) => void }) {
   return <div className="compact-workspace">
-    <Tabs label="玩家测三句话">{playerMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasPlayerSectionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
+    <Tabs label="游戏侧三句话">{playerMeta.map((item) => <Tab key={item.id} active={active === item.id} label={item.label} status={hasPlayerSectionContent(project, item.id) ? "已填" : "空"} onClick={() => setActive(item.id)} />)}</Tabs>
     <section className="sentence-panel player-sentence-panel">
       {active === "firstLook" && <><LiveSentence>{playerFirstPreview(project)}</LiveSentence><div className="sentence-fields"><TextField label="主题" value={project.player.firstLook.theme} onChange={(value) => updatePlayer(edit, "firstLook", "theme", value)} /><TextField label="游戏类型" value={project.player.firstLook.genre} onChange={(value) => updatePlayer(edit, "firstLook", "genre", value)} /><TextField label="关联游戏" value={project.player.firstLook.references} onChange={(value) => updatePlayer(edit, "firstLook", "references", value)} /><TextField label="体验预期" value={project.player.firstLook.expectation} onChange={(value) => updatePlayer(edit, "firstLook", "expectation", value)} /></div></>}
       {active === "firstTen" && <><LiveSentence>{playerTenPreview(project)}</LiveSentence><div className="sentence-fields"><TextField label="会 / 不会" value={project.player.firstTen.fulfilment} onChange={(value) => updatePlayer(edit, "firstTen", "fulfilment", value)} /><TextField label="还能 / 而是" value={project.player.firstTen.outcome} onChange={(value) => updatePlayer(edit, "firstTen", "outcome", value)} /><TextField label="独特体验" value={project.player.firstTen.uniqueExperience} onChange={(value) => updatePlayer(edit, "firstTen", "uniqueExperience", value)} /><TextField label="目标 / 期待" value={project.player.firstTen.nextGoal} onChange={(value) => updatePlayer(edit, "firstTen", "nextGoal", value)} /></div></>}
@@ -331,8 +372,8 @@ function SummaryReadView({ project }: { project: ProjectState }) {
   return <>
     <section className="summary-section"><h2>最初想法</h2><p>{display(project.rawIdea)}</p></section>
     <section className="summary-section"><h2>三句话</h2><Statement label="一句话说明：什么游戏？">{gameplayPreview(project, "（空）")}</Statement><Statement label="一句话：什么体验">{experiencePreview(project, "（空）")}</Statement><Statement label="一句话：体验如何可行？">{hypothesisPreview(project, "（空）")}</Statement></section>
-    <section className="summary-section"><h2>游戏设计四大支柱</h2><div className="summary-tetrad">{tetradMeta.map((meta) => <article key={meta.id}><strong>{meta.label}</strong><p>{display(project.tetrad[meta.id].foundation)}</p><p>{display(project.tetrad[meta.id].signature)}</p><small>{display(project.tetrad[meta.id].support)}</small></article>)}</div></section>
-    <section className="summary-section"><h2>玩家测构思</h2><div className="summary-journey"><article><b>第一句话</b><p>{playerFirstPreview(project, "（空）")}</p></article><article><b>第二句话</b><p>{playerTenPreview(project, "（空）")}</p></article><article><b>第三句话</b><p>{playerArcPreview(project, "（空）")}</p></article></div></section>
+    <section className="summary-section"><h2>游戏设计四大支柱</h2><div className="summary-tetrad">{tetradMeta.map((meta) => <article key={meta.id}><strong>{meta.label}</strong><p>{display(project.tetrad[meta.id].foundation)}</p><p>{display(project.tetrad[meta.id].signature)}</p><div className="summary-support">{tetradMeta.filter((target) => target.id !== meta.id).map((target) => <small key={target.id}><b>对{target.label}：</b>{display(project.tetrad[meta.id].support[target.id])}</small>)}</div></article>)}</div></section>
+    <section className="summary-section"><h2>游戏侧构思</h2><div className="summary-journey"><article><b>第一句话</b><p>{playerFirstPreview(project, "（空）")}</p></article><article><b>第二句话</b><p>{playerTenPreview(project, "（空）")}</p></article><article><b>第三句话</b><p>{playerArcPreview(project, "（空）")}</p></article></div></section>
   </>;
 }
 
@@ -344,8 +385,8 @@ function SummaryEditor({ project, edit }: StepProps) {
       <EditSentenceBlock title="一句话：什么体验" preview={experiencePreview(project)}><TextField label="目标玩家" value={project.experience.audience} onChange={(value) => updateRecord(edit, "experience", "audience", value)} /><TextField label="核心感受" value={project.experience.feeling} onChange={(value) => updateRecord(edit, "experience", "feeling", value)} /><TextField label="关键动态" value={project.experience.dynamic} onChange={(value) => updateRecord(edit, "experience", "dynamic", value)} /><TextField label="不依赖的常规方案" value={project.experience.alternative} onChange={(value) => updateRecord(edit, "experience", "alternative", value)} /></EditSentenceBlock>
       <EditSentenceBlock title="一句话：体验如何可行？" preview={hypothesisPreview(project)}><TextField label="执行的机制" value={project.hypothesis.mechanism} onChange={(value) => updateRecord(edit, "hypothesis", "mechanism", value)} /><TextField label="产生的行为或策略" value={project.hypothesis.behavior} onChange={(value) => updateRecord(edit, "hypothesis", "behavior", value)} /><TextField label="目标体验" value={project.hypothesis.experience} onChange={(value) => updateRecord(edit, "hypothesis", "experience", value)} /><TextField label="可观察信号" value={project.hypothesis.signal} onChange={(value) => updateRecord(edit, "hypothesis", "signal", value)} /></EditSentenceBlock>
     </section>
-    <section className="summary-edit-section"><h2>游戏设计四大支柱</h2><div className="summary-edit-pillars">{tetradMeta.map((meta) => <div className="summary-edit-card" key={meta.id}><h3>{meta.label}</h3><TextAreaField label="基础框架" value={project.tetrad[meta.id].foundation} onChange={(value) => updateTetrad(edit, meta.id, "foundation", value)} /><TextAreaField label="风格特点" value={project.tetrad[meta.id].signature} onChange={(value) => updateTetrad(edit, meta.id, "signature", value)} /><TextAreaField label="对其他的支持" value={project.tetrad[meta.id].support} onChange={(value) => updateTetrad(edit, meta.id, "support", value)} /></div>)}</div></section>
-    <section className="summary-edit-section"><h2>玩家测构思</h2>
+    <section className="summary-edit-section"><h2>游戏设计四大支柱</h2><div className="summary-edit-pillars">{tetradMeta.map((meta) => <div className="summary-edit-card" key={meta.id}><h3>{meta.label}</h3><TextField label="基础框架（简短短语）" placeholder={foundationPlaceholder(meta.id)} value={project.tetrad[meta.id].foundation} onChange={(value) => updateTetrad(edit, meta.id, "foundation", value)} /><TextAreaField label="风格特点" value={project.tetrad[meta.id].signature} onChange={(value) => updateTetrad(edit, meta.id, "signature", value)} />{tetradMeta.filter((target) => target.id !== meta.id).map((target) => <TextAreaField key={target.id} label={`${meta.label}对${target.label}的支持`} value={project.tetrad[meta.id].support[target.id]} onChange={(value) => updateTetradSupport(edit, meta.id, target.id, value)} />)}</div>)}</div></section>
+    <section className="summary-edit-section"><h2>游戏侧构思</h2>
       <EditSentenceBlock title="第一句话" preview={playerFirstPreview(project)}><TextField label="主题" value={project.player.firstLook.theme} onChange={(value) => updatePlayer(edit, "firstLook", "theme", value)} /><TextField label="游戏类型" value={project.player.firstLook.genre} onChange={(value) => updatePlayer(edit, "firstLook", "genre", value)} /><TextField label="关联游戏" value={project.player.firstLook.references} onChange={(value) => updatePlayer(edit, "firstLook", "references", value)} /><TextField label="体验预期" value={project.player.firstLook.expectation} onChange={(value) => updatePlayer(edit, "firstLook", "expectation", value)} /></EditSentenceBlock>
       <EditSentenceBlock title="第二句话" preview={playerTenPreview(project)}><TextField label="会 / 不会" value={project.player.firstTen.fulfilment} onChange={(value) => updatePlayer(edit, "firstTen", "fulfilment", value)} /><TextField label="还能 / 而是" value={project.player.firstTen.outcome} onChange={(value) => updatePlayer(edit, "firstTen", "outcome", value)} /><TextField label="独特体验" value={project.player.firstTen.uniqueExperience} onChange={(value) => updatePlayer(edit, "firstTen", "uniqueExperience", value)} /><TextField label="目标 / 期待" value={project.player.firstTen.nextGoal} onChange={(value) => updatePlayer(edit, "firstTen", "nextGoal", value)} /></EditSentenceBlock>
       <EditSentenceBlock title="第三句话" preview={playerArcPreview(project)}><TextField label="机制 / 内容" value={project.player.arc.source} onChange={(value) => updatePlayer(edit, "arc", "source", value)} /><TextField label="游戏体验" value={project.player.arc.finale} onChange={(value) => updatePlayer(edit, "arc", "finale", value)} /></EditSentenceBlock>
@@ -355,8 +396,8 @@ function SummaryEditor({ project, edit }: StepProps) {
 
 type StepProps = { project: ProjectState; edit: (updater: (current: ProjectState) => ProjectState) => void };
 
-function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="field-control"><span>{label}</span><input value={value} placeholder="请输入..." onChange={(event) => onChange(event.target.value)} /></label>;
+function TextField({ label, value, placeholder = "请输入...", onChange }: { label: string; value: string; placeholder?: string; onChange: (value: string) => void }) {
+  return <label className="field-control"><span>{label}</span><input value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function TextAreaField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -369,7 +410,39 @@ function LiveSentence({ children }: { children: ReactNode }) { return <p classNa
 function Statement({ label, children }: { label: string; children: ReactNode }) { return <article className="summary-statement"><strong>{label}</strong><p>{children}</p></article>; }
 function EditSentenceBlock({ title, preview, children }: { title: string; preview: ReactNode; children: ReactNode }) { return <article className="edit-sentence-block"><h3>{title}</h3><LiveSentence>{preview}</LiveSentence><div className="summary-edit-grid">{children}</div></article>; }
 function DetailedExample({ title, children }: { title: string; children: ReactNode }) { return <article className="detailed-example"><h3>{title}</h3>{children}</article>; }
-function ExampleList({ items }: { items: Array<[string, string]> }) { return <div className="example-list">{items.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div>; }
+function ReferenceFill({ children }: { children: ReactNode }) { return <span className="reference-fill">{children}</span>; }
+function SentenceReferenceExamples() {
+  return <div className="detailed-examples">{tetradReferenceGames.map((game) => {
+    const { gameplay, experience, hypothesis } = game.sentence;
+    return <DetailedExample key={game.title} title={game.title}>
+      <p><b>什么游戏：</b>玩家作为<ReferenceFill>{gameplay.identity}</ReferenceFill>，反复<ReferenceFill>{gameplay.verb}</ReferenceFill>，以<ReferenceFill>{gameplay.goal}</ReferenceFill>；但<ReferenceFill>{gameplay.constraint}</ReferenceFill>。</p>
+      <p><b>什么体验：</b>为<ReferenceFill>{experience.audience}</ReferenceFill>提供<ReferenceFill>{experience.feeling}</ReferenceFill>，主要通过<ReferenceFill>{experience.dynamic}</ReferenceFill>来实现，而不是依赖<ReferenceFill>{experience.alternative}</ReferenceFill>。</p>
+      <p><b>如何验证：</b>如果让玩家<ReferenceFill>{hypothesis.mechanism}</ReferenceFill>，那么他们会<ReferenceFill>{hypothesis.behavior}</ReferenceFill>，进而感到<ReferenceFill>{hypothesis.experience}</ReferenceFill>；证据是<ReferenceFill>{hypothesis.signal}</ReferenceFill>。</p>
+    </DetailedExample>;
+  })}</div>;
+}
+function PlayerReferenceExamples() {
+  return <div className="detailed-examples">{tetradReferenceGames.map((game) => {
+    const { firstLook, firstTen, arc } = game.player;
+    return <DetailedExample key={game.title} title={game.title}>
+      <p><b>第一句：</b>玩家看到游戏名称、介绍图，会认为这是一个关于<ReferenceFill>{firstLook.theme}</ReferenceFill>的<ReferenceFill>{firstLook.genre}</ReferenceFill>游戏，会和<ReferenceFill>{firstLook.references}</ReferenceFill>关联比较，并产生<ReferenceFill>{firstLook.expectation}</ReferenceFill>的预期。</p>
+      <p><b>第二句：</b>玩家在体验游戏10分钟内<ReferenceFill>{firstTen.fulfilment}</ReferenceFill>获得体验预期，<ReferenceFill>{firstTen.outcome}</ReferenceFill>获得<ReferenceFill>{firstTen.uniqueExperience}</ReferenceFill>，玩家因此而不会离开游戏，并产生<ReferenceFill>{firstTen.nextGoal}</ReferenceFill>。</p>
+      <p><b>第三句：</b>玩家中后期体验的变化是来自<ReferenceFill>{arc.source}</ReferenceFill>的出现，并最终在游戏结束时，获得<ReferenceFill>{arc.finale}</ReferenceFill>的终极体验。</p>
+    </DetailedExample>;
+  })}</div>;
+}
+function TetradReferenceExamples({ pillar }: { pillar: TetradKey }) {
+  const source = tetradMeta.find((item) => item.id === pillar)!;
+  return <div className="detailed-examples">{tetradReferenceGames.map((game) => {
+    const example = game.examples[pillar];
+    return <DetailedExample key={game.title} title={game.title}>
+      <p><b>基础框架：</b><ReferenceFill>{example.foundation}</ReferenceFill></p>
+      <p><b>风格特点：</b><ReferenceFill>{example.signature}</ReferenceFill></p>
+      {tetradMeta.filter((target) => target.id !== pillar).map((target) => <p key={target.id}><b>{source.label}对{target.label}的支持：</b><ReferenceFill>{example.support[target.id]}</ReferenceFill></p>)}
+    </DetailedExample>;
+  })}</div>;
+}
+function ExampleList({ items }: { items: Array<[string, string]> }) { return <div className="example-list">{items.map(([title, copy]) => <article key={title}><strong>{title}</strong><p><ReferenceFill>{copy}</ReferenceFill></p></article>)}</div>; }
 
 function ReferenceModal({ reference, onClose }: { reference: { title: string; body: ReactNode }; onClose: () => void }) {
   useEffect(() => {
@@ -381,14 +454,19 @@ function ReferenceModal({ reference, onClose }: { reference: { title: string; bo
 }
 
 function updateRecord(edit: StepProps["edit"], section: "gameplay" | "experience" | "hypothesis", field: string, value: string) { edit((current) => ({ ...current, [section]: { ...current[section], [field]: value } } as ProjectState)); }
-function updateTetrad(edit: StepProps["edit"], dimension: TetradKey, field: keyof ProjectState["tetrad"][TetradKey], value: string) { edit((current) => ({ ...current, tetrad: { ...current.tetrad, [dimension]: { ...current.tetrad[dimension], [field]: value } } })); }
+function updateTetrad(edit: StepProps["edit"], dimension: TetradKey, field: "foundation" | "signature", value: string) { edit((current) => ({ ...current, tetrad: { ...current.tetrad, [dimension]: { ...current.tetrad[dimension], [field]: value } } })); }
+function updateTetradSupport(edit: StepProps["edit"], dimension: TetradKey, target: TetradKey, value: string) { edit((current) => ({ ...current, tetrad: { ...current.tetrad, [dimension]: { ...current.tetrad[dimension], support: { ...current.tetrad[dimension].support, [target]: value } } } })); }
 function updatePlayer(edit: StepProps["edit"], section: keyof ProjectState["player"], field: string, value: string) { edit((current) => ({ ...current, player: { ...current.player, [section]: { ...current.player[section], [field]: value } } } as ProjectState)); }
-function hasDimensionContent(project: ProjectState, dimension: TetradKey) { return Object.values(project.tetrad[dimension]).some((value) => value.trim()); }
+function hasDimensionContent(project: ProjectState, dimension: TetradKey) { const answer = project.tetrad[dimension]; return Boolean(answer.foundation.trim() || answer.signature.trim() || Object.values(answer.support).some((value) => value.trim())); }
 function hasSentenceContent(project: ProjectState, section: SentenceTab) { return Object.values(project[section]).some((value) => value.trim()); }
 function hasPlayerSectionContent(project: ProjectState, section: PlayerTab) {
   if (section === "firstLook") return Object.values(project.player.firstLook).some((value) => value.trim());
   if (section === "firstTen") return [project.player.firstTen.fulfilment, project.player.firstTen.outcome, project.player.firstTen.uniqueExperience, project.player.firstTen.nextGoal].some((value) => value.trim());
   return [project.player.arc.source, project.player.arc.finale].some((value) => value.trim());
+}
+
+function foundationPlaceholder(dimension: TetradKey) {
+  return { narrative: "如：日式 Galgame", mechanics: "如：开放世界探索", aesthetics: "如：3D 卡通渲染", technology: "如：多平台 Unity" }[dimension];
 }
 
 function Slot({ value, empty = "______" }: { value: string; empty?: string }) {

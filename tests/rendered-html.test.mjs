@@ -22,7 +22,7 @@ test("server-renders the simplified CreatorEngine creation guide", async () => {
   assert.match(html, /最初想法/);
   assert.match(html, /三句话/);
   assert.match(html, /四大支柱/);
-  assert.match(html, /玩家测构思/);
+  assert.match(html, /游戏侧构思/);
   assert.match(html, /设计摘要/);
   assert.doesNotMatch(html, /可留空/);
 });

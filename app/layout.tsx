@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 
 const title = "创作引擎 · 游戏构思向导";
-const description = "用三句话、游戏设计四大支柱与玩家测构思，把最初想法整理成可编辑的设计摘要。";
+const description = "用三句话、游戏设计四大支柱与游戏侧构思，把最初想法整理成可编辑的设计摘要。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

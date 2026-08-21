@@ -12,7 +12,7 @@ export const steps: StepMeta[] = [
   { id: "idea", index: 1, short: "最初想法", title: "先保留最初的火花。" },
   { id: "sentences", index: 2, short: "三句话", title: "用三句话说明游戏核心。" },
   { id: "tetrad", index: 3, short: "四大支柱", title: "游戏设计四大支柱" },
-  { id: "player", index: 4, short: "玩家测构思", title: "玩家测构思" },
+  { id: "player", index: 4, short: "游戏侧构思", title: "游戏侧构思" },
   { id: "summary", index: 5, short: "设计摘要", title: "设计摘要" },
 ];
 
