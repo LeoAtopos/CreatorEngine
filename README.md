@@ -2,6 +2,12 @@
 
 一个在本地运行的游戏构思向导。它把模糊想法沿着一条短而明确的路径，整理成可以讨论、修改和验证的设计摘要。
 
+## 直接使用
+
+- 在线网页版：[打开 CreatorEngine](https://leoatopos.github.io/CreatorEngine/)
+- Windows 便携版：[下载 CreatorEngine.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine.exe)
+- Windows x64 安装版：[下载 CreatorEngine_x64-setup.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine_x64-setup.exe)
+
 ## 创作流程
 
 1. 最初想法：保留作者最初的火花。
