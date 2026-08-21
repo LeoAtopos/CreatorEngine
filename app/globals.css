@@ -63,7 +63,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   position: fixed;
   z-index: 20;
   top: 68px;
-  bottom: 0;
+  bottom: 38px;
   left: 0;
   width: 220px;
   display: flex;
@@ -86,7 +86,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .ce-rail li.filled button > span { color: white; border-color: var(--ink); background: var(--ink); }
 .rail-note { margin: auto 8px 0; color: var(--soft); font-size: 14px; }
 
-.ce-main { min-height: 100vh; margin-left: 220px; padding-top: 68px; }
+.ce-main { min-height: 100vh; margin-left: 220px; padding: 68px 0 38px; }
 .step-page { width: min(100% - 56px, 760px); margin: 0 auto; padding: 70px 0 90px; }
 .step-heading h1 { margin: 0; font-size: clamp(34px, 4vw, 46px); font-weight: 550; line-height: 1.25; letter-spacing: -.045em; }
 .step-heading > p { max-width: 660px; margin: 12px 0 0; color: var(--muted); font-size: 16px; line-height: 1.7; }
@@ -94,6 +94,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .welcome-page { width: min(100% - 56px, 720px); margin: 0 auto; padding: clamp(90px, 14vh, 150px) 0 80px; }
 .welcome-page > h1 { margin: 0; font-family: Georgia, "Songti SC", "STSong", serif; font-size: clamp(48px, 6vw, 70px); font-weight: 400; line-height: 1.18; letter-spacing: -.055em; }
+.welcome-subtitle { max-width: 680px; margin: 20px 0 0; color: var(--muted); font-size: 18px; line-height: 1.75; }
 .welcome-copy { max-width: 620px; margin: 20px 0 0; color: var(--muted); font-size: 17px; }
 .project-name-field { display: block; margin-top: 48px; }
 .project-name-field span { display: block; font-size: 15px; font-weight: 680; }
@@ -118,8 +119,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .field-control input:focus, .field-control textarea:focus, .field-control select:focus { border-color: var(--ink); }
 input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 
-.reference-trigger { margin-top: 24px; padding: 4px 0; color: var(--soft); border: 0; border-bottom: 1px solid var(--line-strong); background: transparent; font-size: 14px; }
-.reference-trigger:hover { color: var(--ink); border-color: var(--ink); }
+.reference-trigger { min-height: 44px; display: inline-flex; gap: 8px; align-items: center; margin-top: 26px; padding: 0 17px; color: var(--ink); border: 1px solid var(--ink); background: var(--accent); box-shadow: 4px 4px 0 rgba(29, 30, 27, .16); font-size: 15px; font-weight: 750; transition: transform .15s ease, box-shadow .15s ease; }
+.reference-trigger:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 rgba(29, 30, 27, .18); }
 .reference-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(29, 30, 27, .38); }
 .reference-modal { width: min(100%, 760px); max-height: min(82vh, 760px); overflow: auto; padding: 28px; border: 1px solid var(--ink); background: var(--surface); box-shadow: 12px 12px 0 rgba(29, 30, 27, .18); }
 .reference-modal header { display: flex; justify-content: space-between; align-items: center; }
@@ -193,6 +194,10 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 .summary-edit-card .field-control { margin-top: 16px; }
 .summary-edit-card .field-control textarea { min-height: 76px; }
 
+.ce-footer { position: fixed; z-index: 25; right: 0; bottom: 0; left: 220px; min-height: 38px; display: flex; justify-content: center; align-items: center; padding: 7px 20px; color: var(--muted); border-top: 1px solid var(--line); background: rgba(246, 245, 240, .97); backdrop-filter: blur(12px); font-size: 13px; line-height: 1.4; text-align: center; }
+.ce-footer a { color: var(--ink); overflow-wrap: anywhere; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.ce-footer a:hover { color: #556d00; }
+
 @media (max-width: 900px) {
   .ce-topbar { grid-template-columns: 1fr auto; padding: 0 18px; }
   .ce-progress { display: none; }
@@ -201,10 +206,13 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
   .ce-rail ol { display: flex; gap: 4px; margin: 0; }
   .ce-rail li button { width: auto; min-height: 48px; grid-template-columns: 28px auto auto; white-space: nowrap; }
   .ce-main { margin-left: 0; padding-top: 134px; }
+  .ce-footer { left: 0; }
   .step-page, .welcome-page { width: min(100% - 32px, 720px); padding-top: 48px; }
 }
 
 @media (max-width: 560px) {
+  .ce-main { padding-bottom: 96px; }
+  .ce-footer { padding: 6px 12px; font-size: 12px; }
   .save-state { display: none !important; }
   .ce-actions > button { font-size: 0; }
   .ce-brand small { display: none; }

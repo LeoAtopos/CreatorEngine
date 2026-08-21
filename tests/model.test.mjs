@@ -88,7 +88,7 @@ test("normalization rejects incompatible data and markdown exports the designed 
   assert.match(markdown, /## 三句话/);
   assert.match(markdown, /## 游戏设计四大支柱/);
   assert.match(markdown, /## 游戏侧构思/);
-  assert.match(markdown, /叙事对机制的支持/);
+  assert.match(markdown, /叙事对机制的指导、支持或要求/);
   assert.match(markdown, /一句话：体验如何可行？/);
   assert.match(markdown, /并产生（空）的预期/);
   assert.match(markdown, /（空）/);
@@ -146,6 +146,17 @@ test("markdown loader supports exports created before embedded project data", ()
   assert.equal(loaded.rawIdea, "保留旧版 Markdown。");
   assert.equal(loaded.tetrad.narrative.foundation, "日式 Galgame");
   assert.equal(loaded.tetrad.narrative.support.technology, "对话树记录分支");
+});
+
+test("markdown loader keeps accepting the old support relation labels", () => {
+  const project = emptyProject();
+  project.tetrad.narrative.support.mechanics = "选择即核心动作";
+  const legacyMarkdown = buildMarkdown(project)
+    .replace(/的指导、支持或要求/g, "的支持")
+    .replace(/\n<!-- creator-engine-data:[\s\S]*?-->\n?$/, "\n");
+
+  const loaded = parseMarkdownProject(legacyMarkdown);
+  assert.equal(loaded.tetrad.narrative.support.mechanics, "选择即核心动作");
 });
 
 test("old single support notes migrate into the separated support fields", () => {

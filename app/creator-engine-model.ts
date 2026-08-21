@@ -1,6 +1,7 @@
 import type { StepId } from "./creator-engine-nodes";
 
 export type TetradKey = "narrative" | "mechanics" | "aesthetics" | "technology";
+export const TETRAD_RELATION_LABEL = "指导、支持或要求";
 
 export type TetradAnswer = {
   foundation: string;
@@ -290,7 +291,7 @@ export function buildMarkdown(project: ProjectState) {
     const answer = project.tetrad[key];
     const support = tetradKeys
       .filter((target) => target !== key)
-      .map((target) => `- ${labels[key]}对${labels[target]}的支持：${display(answer.support[target])}`)
+      .map((target) => `- ${labels[key]}对${labels[target]}的${TETRAD_RELATION_LABEL}：${display(answer.support[target])}`)
       .join("\n");
     return `### ${labels[key]}\n- 基础框架：${display(answer.foundation)}\n- 风格特点：${display(answer.signature)}\n${support}`;
   }).join("\n\n");
@@ -333,9 +334,11 @@ export function parseMarkdownProject(markdown: string): ProjectState {
     if (!block) return;
     project.tetrad[dimension].foundation = exportedValue(bullet(block, "基础框架"));
     project.tetrad[dimension].signature = exportedValue(bullet(block, "风格特点"));
-    const legacySupport = exportedValue(bullet(block, "对其他的支持"));
+    const legacySupport = exportedValue(bullet(block, `对其他的${TETRAD_RELATION_LABEL}`)) || exportedValue(bullet(block, "对其他的支持"));
     tetradKeys.filter((target) => target !== dimension).forEach((target) => {
-      project.tetrad[dimension].support[target] = exportedValue(bullet(block, `${labels[dimension]}对${labels[target]}的支持`)) || legacySupport;
+      const relation = `${labels[dimension]}对${labels[target]}的${TETRAD_RELATION_LABEL}`;
+      const legacyRelation = `${labels[dimension]}对${labels[target]}的支持`;
+      project.tetrad[dimension].support[target] = exportedValue(bullet(block, relation)) || exportedValue(bullet(block, legacyRelation)) || legacySupport;
     });
   });
 

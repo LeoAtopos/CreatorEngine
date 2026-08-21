@@ -19,6 +19,9 @@ test("server-renders the simplified CreatorEngine creation guide", async () => {
   const html = await response.text();
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /把游戏想法说清楚/);
+  assert.match(html, /适合言语化设计习惯的制作人/);
+  assert.match(html, /作者：李欧丁/);
+  assert.match(html, /github\.com\/LeoAtopos\/CreatorEngine/);
   assert.match(html, /最初想法/);
   assert.match(html, /三句话/);
   assert.match(html, /四大支柱/);
