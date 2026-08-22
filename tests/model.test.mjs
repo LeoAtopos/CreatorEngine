@@ -107,7 +107,8 @@ test("normalization rejects incompatible data and markdown exports the designed 
   assert.match(markdown, /^# 移动城市/m);
   assert.match(markdown, /## 三句话/);
   assert.match(markdown, /## 游戏设计四大支柱/);
-  assert.match(markdown, /## 游戏侧构思/);
+  assert.match(markdown, /## 玩家侧构思/);
+  assert.doesNotMatch(markdown, /游戏(?:侧|测)/);
   assert.match(markdown, /叙事对机制的指导、支持或要求/);
   assert.match(markdown, /一句话：体验如何可行？/);
   assert.match(markdown, /并产生（空）的预期/);

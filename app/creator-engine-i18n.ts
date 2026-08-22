@@ -33,9 +33,9 @@ const zh = {
   tetradTabs: "游戏设计四大支柱", pillars: { narrative: "叙事", mechanics: "机制", aesthetics: "美学", technology: "技术" } as Record<TetradKey, string>,
   foundation: "基础框架（简短短语）", signature: "风格特点", relation: "指导、支持或要求",
   placeholders: { narrative: "如：日式 Galgame", mechanics: "如：开放世界探索", aesthetics: "如：3D 卡通渲染", technology: "如：多平台 Unity" } as Record<TetradKey, string>,
-  playerTabs: "游戏侧三句话", playerMeta: { firstLook: "第一句话", firstTen: "第二句话", arc: "第三句话" },
+  playerTabs: "玩家侧三句话", playerMeta: { firstLook: "第一句话", firstTen: "第二句话", arc: "第三句话" },
   finish: "完成", edit: "编辑", copied: "已复制", copy: "复制", download: "下载",
-  threeSentences: "三句话", fourPillars: "游戏设计四大支柱", playerConcept: "游戏侧构思", emptyDisplay: "（空）",
+  threeSentences: "三句话", fourPillars: "游戏设计四大支柱", playerConcept: "玩家侧构思", emptyDisplay: "（空）",
   reference: "参考", closeReference: "关闭参考", ideaReference: "最初想法参考",
   ideaExamples: [
     ["动作火花", "玩家用一根会弯曲的钓线，在风暴里的高楼之间摆荡和救人。"],
@@ -46,7 +46,7 @@ const zh = {
     ["结构火花", "每次失败都会让关卡更容易，却也会让最终结局失去一部分可能性。"],
   ] as Array<[string, string]>,
   sentenceReference: "三句话参考", sentenceReferenceIntro: "以下 10 款游戏与四大支柱保持相同顺序，每款都分别示范“什么游戏、什么体验、如何验证”。",
-  playerReference: "游戏侧构思参考", playerReferenceIntro: "以下 10 款游戏与三句话、四大支柱保持相同顺序，每款都分别示范玩家看到游戏、体验十分钟和进入中后期时的变化。",
+  playerReference: "玩家侧构思参考", playerReferenceIntro: "以下 10 款游戏与三句话、四大支柱保持相同顺序，每款都分别示范玩家看到游戏、体验十分钟和进入中后期时的变化。",
   tetradReferenceTitles: { narrative: "叙事支柱参考", mechanics: "机制支柱参考", aesthetics: "美学支柱参考", technology: "技术支柱参考" } as Record<TetradKey, string>,
   tetradReferenceIntros: {
     narrative: "基础框架只写一个简短的叙事主题或类型短语，再说明它如何分别对另外三根支柱形成指导、支持或要求。以下 10 款游戏与其他支柱保持相同顺序，便于横向比较。",

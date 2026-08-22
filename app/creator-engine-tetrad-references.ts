@@ -53,7 +53,7 @@ export type TetradReferenceGame = {
   examples: Record<TetradKey, TetradReferenceExample>;
 };
 
-// 三句话、游戏侧构思与四个支柱共用这一批游戏和固定顺序，方便横向比较同一作品。
+// 三句话、玩家侧构思与四个支柱共用这一批游戏和固定顺序，方便横向比较同一作品。
 export const tetradReferenceGames: TetradReferenceGame[] = [
   {
     title: "《命运石之门》",
