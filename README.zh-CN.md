@@ -15,7 +15,61 @@
 - Windows x64 安装版：[下载 CreatorEngine_x64-setup.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine_x64-setup.exe)
 - GitHub：[CreatorEngine GitHub](https://github.com/LeoAtopos/CreatorEngine)
 
-## 二、实践用途
+## 二、通过 Codex Skill 对话填写
+
+仓库附带可选的 [`creator-engine-dialogue`](.agents/skills/creator-engine-dialogue/SKILL.md) Skill。它会从最初想法开始，每次只讨论一个设计问题，根据已经确认的内容提供推荐填写和其他方向，最终输出包含设计问题诊断的 Markdown 报告。
+
+CreatorEngine 网页版和桌面版本身仍是本地运行、无需 AI 的软件。这个 Skill 是独立的 Codex 对话辅助方式，仅在创作者主动使用 Codex 时运行。
+
+### 安装 Skill
+
+需要使用支持独立 Skill 的 ChatGPT 桌面版 Codex、Codex CLI 或 Codex IDE 扩展。关于 Skill 的发现和调用机制，可参阅 [Codex Skill 官方说明](https://learn.chatgpt.com/docs/build-skills)。
+
+**方法 A：从 GitHub 安装为个人 Skill（推荐）**
+
+在 Codex 中调用 `$skill-installer`，并发送：
+
+```text
+请从以下 GitHub 路径安装 creator-engine-dialogue Skill：
+https://github.com/LeoAtopos/CreatorEngine/tree/main/.agents/skills/creator-engine-dialogue
+```
+
+个人 Skill 可以在其他项目中继续使用。如果安装后没有立即显示，请重新启动 Codex。
+
+**方法 B：作为当前仓库的项目 Skill 使用**
+
+```bash
+git clone https://github.com/LeoAtopos/CreatorEngine.git
+cd CreatorEngine
+```
+
+使用 Codex 打开仓库根目录。Codex 会自动发现 `.agents/skills/creator-engine-dialogue`，无需复制到个人目录。
+
+### 使用步骤
+
+1. 在新任务中输入 `$creator-engine-dialogue`，并附上最初想法，例如：
+
+   ```text
+   $creator-engine-dialogue
+
+   我想做一个玩家在沉没城市中打捞他人记忆的游戏。
+   请从最初想法开始，逐项帮助我完成设计报告。
+   ```
+
+2. Skill 每轮只处理一个字段，并给出一条“推荐填写”。选择接受、查看其他选项、自行输入、暂时留空或返回修改。
+3. 依次完成工作名称、三句话、四大设计支柱和玩家侧构思。每个阶段结束时都可以校正前面的内容。
+4. 需要加快时，可以说“使用快速模式”；Skill 会按整句话或单个支柱推进，但仍会先请求确认。
+5. 随时可以要求导出阶段性报告。完整报告会列出已确认内容、暂留空项、待验证假设，以及报告当前表明的设计矛盾、信息缺口和优先下一步。
+6. 如果希望保存文件，请明确指定文件名，例如：“请将完整报告保存为 `creator-engine-report.md`。”否则，报告只会显示在对话中。
+
+已有 CreatorEngine Markdown 报告时，也可以直接附上并输入：
+
+```text
+$creator-engine-dialogue
+请读取这份报告，从尚未填写的第一项继续；不要重复已经确认的内容。
+```
+
+## 三、实践用途
 
 1. 制作游戏前，理清创作思路，查漏补缺。
 2. 制作游戏前，用于比较、筛选可做的项目。
@@ -24,7 +78,7 @@
 5. 用于研究其他游戏，锻炼整体设计构思能力。
 6. 概括玩过的游戏，理清游玩体验，达成与创作者的共鸣。
 
-## 三、深度使用说明
+## 四、深度使用说明
 
 以下内容逐条解释每一步的意义及其引申思考。
 
@@ -233,13 +287,13 @@
 - 终极体验通常与某种宏大叙事或价值升华关联在一起。
 - 缺少终极体验并非不可以，只是游戏的价值感会相对较低。
 
-## 四、界面与数据
+## 五、界面与数据
 
 CreatorEngine 的界面会检测操作系统语言：系统语言以 `zh` 开头时自动使用中文，否则使用英文。顶部导航提供中英文切换按钮，并会在当前设备上保存语言偏好。
 
 项目数据通过浏览器 `localStorage` 保存在当前设备，不需要登录，也不会发送到外部服务。下载的 Markdown 文件可以重新载入并继续编辑。
 
-## 五、本地运行
+## 六、本地运行
 
 ```bash
 npm install
@@ -255,14 +309,14 @@ npm run build
 npm run start -- --port 3100
 ```
 
-## 六、检查
+## 七、检查
 
 ```bash
 npm run lint
 npm test
 ```
 
-## 七、Pages 与桌面版构建
+## 八、Pages 与桌面版构建
 
 两种发行版本共用 `app/` 中的界面与数据逻辑。首次构建前，安装桌面前端依赖：
 

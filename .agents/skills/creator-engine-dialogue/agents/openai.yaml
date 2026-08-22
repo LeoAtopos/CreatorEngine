@@ -1,0 +1,3 @@
+interface:
+  display_name: "CreatorEngine 对话创作"
+  short_description: "逐项梳理游戏构思并输出含问题诊断的 Markdown 报告"

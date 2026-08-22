@@ -15,7 +15,61 @@ What cannot be explained clearly is also difficult to make consistently. A game 
 - Windows x64 installer: [Download CreatorEngine_x64-setup.exe](https://github.com/LeoAtopos/CreatorEngine/releases/latest/download/CreatorEngine_x64-setup.exe)
 - GitHub: [CreatorEngine GitHub](https://github.com/LeoAtopos/CreatorEngine)
 
-## 2. Practical uses
+## 2. Fill it out through a Codex skill
+
+This repository includes the optional [`creator-engine-dialogue`](.agents/skills/creator-engine-dialogue/SKILL.md) skill. Starting with the initial idea, it discusses one design decision at a time, proposes wording and alternative directions from confirmed context, and ultimately produces a Markdown report with a diagnosis of the design problems it reveals.
+
+The CreatorEngine web and desktop apps remain local, AI-free software. This skill is a separate conversational option that runs only when a creator chooses to use Codex.
+
+### Install the skill
+
+Use the ChatGPT desktop app with Codex, Codex CLI, or the Codex IDE extension, all of which support standalone skills. See the [official Codex skill documentation](https://learn.chatgpt.com/docs/build-skills) for discovery and invocation details.
+
+**Option A: install it from GitHub as a personal skill (recommended)**
+
+Invoke `$skill-installer` in Codex and send:
+
+```text
+Install the creator-engine-dialogue skill from this GitHub path:
+https://github.com/LeoAtopos/CreatorEngine/tree/main/.agents/skills/creator-engine-dialogue
+```
+
+A personal skill remains available in other projects. If it does not appear immediately after installation, restart Codex.
+
+**Option B: use it as a repository skill**
+
+```bash
+git clone https://github.com/LeoAtopos/CreatorEngine.git
+cd CreatorEngine
+```
+
+Open the repository root in Codex. Codex automatically discovers `.agents/skills/creator-engine-dialogue`; no copy to a personal directory is required.
+
+### Usage steps
+
+1. Start a new task with `$creator-engine-dialogue` and include your initial idea, for example:
+
+   ```text
+   $creator-engine-dialogue
+
+   I want to make a game about recovering other people's memories from a sunken city.
+   Start from the initial idea and help me complete the design report one item at a time.
+   ```
+
+2. The skill handles one field per turn and offers one recommended entry. Accept it, request other options, enter your own wording, leave the field blank, or go back.
+3. Work through the working title, three sentences, four design pillars, and player-side concept. You can revise earlier decisions at every section boundary.
+4. To move faster, ask for “quick mode.” The skill will handle one complete sentence or pillar per turn, while still asking for confirmation.
+5. Ask for a partial report at any time. A complete report lists confirmed content, deferred fields, untested hypotheses, and the design contradictions, information gaps, and highest-priority next steps revealed by the current report.
+6. To save a file, explicitly provide a filename, such as “Save the complete report as `creator-engine-report.md`.” Otherwise, the report is returned only in the conversation.
+
+To resume from an existing CreatorEngine Markdown report, attach it and enter:
+
+```text
+$creator-engine-dialogue
+Read this report and continue from the first incomplete field. Do not repeat confirmed content.
+```
+
+## 3. Practical uses
 
 1. Before production, clarify the creative direction and identify missing considerations.
 2. Before production, compare candidate concepts and decide which projects are worth pursuing.
@@ -24,7 +78,7 @@ What cannot be explained clearly is also difficult to make consistently. A game 
 5. Study other games and strengthen the ability to think about game design as a whole.
 6. Summarize games you have played, clarify the experience they create, and better understand their creators.
 
-## 3. In-depth guide
+## 4. In-depth guide
 
 The following sections explain the purpose of each step and the questions that can be derived from it.
 
@@ -233,13 +287,13 @@ This sentence describes how players feel after substantially completing the game
 - It is often connected to a larger narrative or an elevation of meaning.
 - A game can exist without such a final experience, but its perceived value may be lower.
 
-## 4. Interface and data
+## 5. Interface and data
 
 CreatorEngine detects the operating system language. It uses Chinese when the language begins with `zh` and English otherwise. A language button in the top navigation lets users switch at any time, and the preference is saved on the current device.
 
 Project data is stored in browser `localStorage` on the current device. No sign-in is required, and no project content is sent to an external service. Downloaded Markdown files can be loaded again to continue editing.
 
-## 5. Run locally
+## 6. Run locally
 
 ```bash
 npm install
@@ -255,14 +309,14 @@ npm run build
 npm run start -- --port 3100
 ```
 
-## 6. Check
+## 7. Check
 
 ```bash
 npm run lint
 npm test
 ```
 
-## 7. Pages and desktop builds
+## 8. Pages and desktop builds
 
 Both distribution targets reuse the interface and data logic in `app/`. Install the desktop frontend dependencies before the first build:
 
