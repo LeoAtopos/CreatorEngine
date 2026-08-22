@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { ArrowCounterClockwise, ArrowLeft, ArrowRight, BookOpenText, Check, Compass, Copy, DownloadSimple, FloppyDisk, PencilSimple, UploadSimple, X } from "@phosphor-icons/react";
 import { buildMarkdown, emptyProject, hasStepContent, LEGACY_STORAGE_KEY, migrateLegacyProject, normalizeProject, parseMarkdownProject, STORAGE_KEY, type Language, type ProjectState, type TetradKey } from "./creator-engine-model";
 import { detectSystemLanguage, getUiCopy, LANGUAGE_STORAGE_KEY, type UiCopy } from "./creator-engine-i18n";
@@ -11,7 +11,8 @@ import { tetradReferenceGamesEn } from "./creator-engine-tetrad-references-en";
 
 declare global {
   interface Window {
-    __CREATOR_ENGINE_SAVE_MARKDOWN__?: (file: { content: string; defaultFileName: string; dialogTitle: string; filterName: string }) => Promise<boolean>;
+    __CREATOR_ENGINE_OPEN_MARKDOWN__?: (options: { dialogTitle: string; filterName: string }) => Promise<{ content: string; fileName: string; path: string } | null>;
+    __CREATOR_ENGINE_SAVE_MARKDOWN__?: (file: { content: string; defaultFileName: string; dialogTitle: string; filterName: string; targetPath?: string }) => Promise<{ saved: boolean; fileName?: string; path?: string }>;
   }
 }
 
@@ -45,6 +46,10 @@ export function CreatorEngine() {
   const [activeTetrad, setActiveTetrad] = useState<TetradKey>("narrative");
   const [activePlayer, setActivePlayer] = useState<PlayerTab>("firstLook");
   const [loadNotice, setLoadNotice] = useState("");
+  const [nativeFileAccess, setNativeFileAccess] = useState(false);
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
+  const [fileDirty, setFileDirty] = useState(false);
+  const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const loadInput = useRef<HTMLInputElement>(null);
   const t = getUiCopy(language);
 
@@ -64,6 +69,7 @@ export function CreatorEngine() {
         setProject(emptyProject(selectedLanguage));
       } finally {
         setIntroOpen(window.localStorage.getItem(INTRO_SEEN_STORAGE_KEY) !== "1");
+        setNativeFileAccess(Boolean(window.__CREATOR_ENGINE_OPEN_MARKDOWN__ && window.__CREATOR_ENGINE_SAVE_MARKDOWN__));
         setHydrated(true);
       }
     }, 0);
@@ -91,6 +97,12 @@ export function CreatorEngine() {
     return () => window.removeEventListener("message", receiveIntroMessage);
   }, []);
 
+  useEffect(() => {
+    if (!toast) return;
+    const handle = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(handle);
+  }, [toast]);
+
   const allSteps = localizedSteps(language);
   const creationSteps = allSteps.filter((step) => step.id !== "welcome");
   const current = allSteps.find((step) => step.id === project.currentStep)!;
@@ -108,6 +120,7 @@ export function CreatorEngine() {
 
   function edit(updater: (current: ProjectState) => ProjectState) {
     setProject((currentProject) => ({ ...updater(currentProject), updatedAt: new Date().toISOString() }));
+    if (nativeFileAccess) setFileDirty(true);
   }
   function go(step: StepId, position: "first" | "last" = "first") {
     if (step === "sentences") setActiveSentence(position === "last" ? sentenceOrder.at(-1)! : sentenceOrder[0]);
@@ -147,6 +160,9 @@ export function CreatorEngine() {
     if (!window.confirm(t.restartConfirm)) return;
     window.localStorage.removeItem(STORAGE_KEY);
     setProject(emptyProject(language));
+    setCurrentFilePath(null);
+    setFileDirty(false);
+    setLoadNotice("");
   }
   function closeIntro() {
     window.localStorage.setItem(INTRO_SEEN_STORAGE_KEY, "1");
@@ -157,18 +173,41 @@ export function CreatorEngine() {
     setReferenceOpen(null);
     setGuideOpen(null);
     setLoadNotice("");
+    if (nativeFileAccess) setFileDirty(true);
+  }
+  const showToast = useCallback((message: string) => {
+    setToast({ id: Date.now(), message });
+  }, []);
+  async function applyLoadedMarkdown(content: string, fileName: string, path: string | null) {
+    const loaded = parseMarkdownProject(content, language);
+    if (hasStepContent(project, "summary") && !window.confirm(t.loadConfirm)) return;
+    setProject({ ...loaded, updatedAt: new Date().toISOString() });
+    setActiveSentence("gameplay"); setActiveTetrad("narrative"); setActivePlayer("firstLook");
+    setCurrentFilePath(path);
+    setFileDirty(false);
+    setLoadNotice(`${t.loaded} ${fileName}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  async function chooseMarkdownFile() {
+    if (!window.__CREATOR_ENGINE_OPEN_MARKDOWN__) {
+      loadInput.current?.click();
+      return;
+    }
+    try {
+      const file = await window.__CREATOR_ENGINE_OPEN_MARKDOWN__({ dialogTitle: t.loadDialogTitle, filterName: t.markdownDocument });
+      if (file) await applyLoadedMarkdown(file.content, file.fileName, file.path);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t.readFailed;
+      setLoadNotice(t.loadFailed);
+      window.alert(`${t.loadFailed}: ${message}`);
+    }
   }
   async function loadMarkdown(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     try {
-      const loaded = parseMarkdownProject(await file.text(), language);
-      if (hasStepContent(project, "summary") && !window.confirm(t.loadConfirm)) return;
-      setProject({ ...loaded, updatedAt: new Date().toISOString() });
-      setActiveSentence("gameplay"); setActiveTetrad("narrative"); setActivePlayer("firstLook");
-      setLoadNotice(`${t.loaded} ${file.name}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      await applyLoadedMarkdown(await file.text(), file.name, null);
     } catch (error) {
       const message = error instanceof Error ? error.message : t.readFailed;
       setLoadNotice(t.loadFailed);
@@ -180,12 +219,24 @@ export function CreatorEngine() {
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1600);
   }
-  async function downloadSummary() {
+  const saveSummary = useCallback(async (saveAs = false) => {
     const content = buildMarkdown(project, language);
     const defaultFileName = markdownFileName(project.name, language);
     if (window.__CREATOR_ENGINE_SAVE_MARKDOWN__) {
       try {
-        await window.__CREATOR_ENGINE_SAVE_MARKDOWN__({ content, defaultFileName, dialogTitle: t.dialogTitle, filterName: t.markdownDocument });
+        const result = await window.__CREATOR_ENGINE_SAVE_MARKDOWN__({
+          content,
+          defaultFileName,
+          dialogTitle: t.dialogTitle,
+          filterName: t.markdownDocument,
+          targetPath: saveAs ? undefined : currentFilePath ?? undefined,
+        });
+        if (!result.saved) return;
+        const savedFileName = result.fileName || defaultFileName;
+        setCurrentFilePath(result.path || currentFilePath);
+        setFileDirty(false);
+        setLoadNotice(`${t.saved} ${savedFileName}`);
+        showToast(`${t.saveCompleted} · ${savedFileName}`);
       } catch (error) {
         const message = error instanceof Error ? error.message : t.cannotSave;
         window.alert(`${t.saveFailed}: ${message}`);
@@ -196,7 +247,21 @@ export function CreatorEngine() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a"); link.href = url; link.download = defaultFileName; link.click();
     URL.revokeObjectURL(url);
+  }, [currentFilePath, language, project, showToast, t]);
+  async function downloadSummary() {
+    await saveSummary(true);
   }
+
+  useEffect(() => {
+    if (!nativeFileAccess) return;
+    const handleSaveShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
+      event.preventDefault();
+      void saveSummary(false);
+    };
+    window.addEventListener("keydown", handleSaveShortcut);
+    return () => window.removeEventListener("keydown", handleSaveShortcut);
+  }, [nativeFileAccess, saveSummary]);
 
   return <LanguageContext.Provider value={language}><div className="ce-shell">
     <header className="ce-topbar">
@@ -206,8 +271,9 @@ export function CreatorEngine() {
         <button className="language-switch" type="button" onClick={switchLanguage} aria-label={t.switchLanguage} title={t.switchLanguage}>{t.switchLabel}</button>
         <button className="intro-button" type="button" onClick={() => setIntroOpen(true)}><BookOpenText size={18} />{t.intro}</button>
         <input ref={loadInput} className="load-input" type="file" accept=".md,text/markdown,text/plain" onChange={loadMarkdown} />
-        <button className="load-button" type="button" onClick={() => loadInput.current?.click()}><UploadSimple size={18} />{t.load}</button>
-        <span className="save-state" title={loadNotice || undefined}><FloppyDisk size={17} />{loadNotice || (hydrated ? t.saved : t.reading)}</span>
+        <button className="load-button" type="button" onClick={() => void chooseMarkdownFile()}><UploadSimple size={18} />{t.load}</button>
+        {nativeFileAccess && <button className={`save-button ${fileDirty ? "is-dirty" : ""}`} type="button" onClick={() => void saveSummary(false)} title={t.saveShortcut} aria-keyshortcuts="Control+S Meta+S"><FloppyDisk size={18} />{t.save}</button>}
+        <span className="save-state" title={currentFilePath || loadNotice || undefined}><FloppyDisk size={17} />{fileDirty ? t.unsaved : loadNotice || (hydrated ? t.saved : t.reading)}</span>
         <button type="button" onClick={restart}><ArrowCounterClockwise size={18} />{t.restart}</button>
       </div>
     </header>
@@ -230,6 +296,7 @@ export function CreatorEngine() {
     {referenceOpen && <ReferenceModal target={referenceOpen} onClose={() => setReferenceOpen(null)} />}
     {guideOpen && <GuideModal target={guideOpen} onClose={() => setGuideOpen(null)} />}
     {introOpen && <IntroOverlay language={language} title={t.introTitle} closeLabel={t.closeIntro} onClose={closeIntro} />}
+    {toast && <div className="ce-toast" role="status" aria-live="polite"><Check size={18} weight="bold" />{toast.message}</div>}
   </div></LanguageContext.Provider>;
 }
 

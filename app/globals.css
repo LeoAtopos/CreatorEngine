@@ -57,6 +57,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .ce-actions > span, .ce-actions > button { display: flex; gap: 7px; align-items: center; color: var(--muted); font-size: 14px; }
 .ce-actions > button { padding: 5px 0; border: 0; background: transparent; }
 .ce-actions > button:hover { color: var(--ink); }
+.ce-actions > .save-button { color: var(--ink); font-weight: 700; }
+.ce-actions > .save-button.is-dirty::after { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); content: ""; }
 .ce-actions > .language-switch { min-width: 46px; padding: 4px 9px; color: var(--ink); border: 1px solid var(--ink); background: var(--accent); font-size: 12px; font-weight: 800; line-height: 1.4; }
 .ce-actions > .language-switch:hover { background: var(--accent-soft); }
 .load-input { display: none; }
@@ -152,6 +154,7 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 .intro-shell iframe { width: 100%; height: 100%; display: block; border: 0; background: var(--paper); }
 .intro-close { position: absolute; z-index: 2; top: 18px; right: 18px; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--ink); background: var(--surface); }
 .intro-close:hover { background: var(--accent); }
+.ce-toast { position: fixed; z-index: 160; top: 84px; right: 24px; min-height: 44px; display: flex; gap: 9px; align-items: center; padding: 10px 16px; color: white; border: 1px solid var(--ink); background: var(--ink); box-shadow: 5px 5px 0 rgba(29, 30, 27, .18); font-size: 14px; font-weight: 700; }
 .example-list, .detailed-examples { display: grid; gap: 12px; }
 .example-list article, .detailed-example { padding: 16px 18px; color: var(--ink); border-left: 3px solid var(--accent); background: var(--accent-soft); }
 .example-list strong, .detailed-example h3 { font-size: 16px; }
@@ -254,4 +257,5 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
   .intro-backdrop { padding: 8px; }
   .intro-shell { width: calc(100vw - 16px); height: calc(100vh - 16px); box-shadow: none; }
   .intro-close { top: 10px; right: 10px; }
+  .ce-toast { top: 78px; right: 12px; left: 12px; justify-content: center; }
 }
