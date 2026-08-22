@@ -37,10 +37,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: fortauri/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            fortauri/package-lock.json
 
       - name: Build static application
         run: |
+          npm ci
           npm ci --prefix fortauri
           npm --prefix fortauri run build
           node scripts/sync-pages.mjs

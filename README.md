@@ -267,6 +267,7 @@ npm test
 Both distribution targets reuse the interface and data logic in `app/`. Install the desktop frontend dependencies before the first build:
 
 ```bash
+npm ci
 npm ci --prefix fortauri
 ```
 

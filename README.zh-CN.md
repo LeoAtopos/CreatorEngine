@@ -267,6 +267,7 @@ npm test
 两种发行版本共用 `app/` 中的界面与数据逻辑。首次构建前，安装桌面前端依赖：
 
 ```bash
+npm ci
 npm ci --prefix fortauri
 ```
 
