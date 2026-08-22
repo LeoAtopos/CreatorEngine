@@ -1,6 +1,6 @@
 {
   "name": "creator-engine-game-mvp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
+    "build:pages": "npm --prefix fortauri run build && node scripts/sync-pages.mjs",
+    "build:tauri": "npm --prefix fortauri run tauri:build",
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/model.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"

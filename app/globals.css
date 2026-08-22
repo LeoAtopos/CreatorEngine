@@ -121,8 +121,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .field-control input:focus, .field-control textarea:focus, .field-control select:focus { border-color: var(--ink); }
 input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 
-.reference-trigger { min-height: 44px; display: inline-flex; gap: 8px; align-items: center; margin-top: 26px; padding: 0 17px; color: var(--ink); border: 1px solid var(--ink); background: var(--accent); box-shadow: 4px 4px 0 rgba(29, 30, 27, .16); font-size: 15px; font-weight: 750; transition: transform .15s ease, box-shadow .15s ease; }
-.reference-trigger:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 rgba(29, 30, 27, .18); }
+.step-help-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.reference-trigger, .guide-trigger { min-height: 44px; display: inline-flex; gap: 8px; align-items: center; padding: 0 17px; color: var(--ink); border: 1px solid var(--ink); font-size: 15px; font-weight: 750; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+.reference-trigger { background: var(--accent); box-shadow: 4px 4px 0 rgba(29, 30, 27, .16); }
+.guide-trigger { background: var(--surface); box-shadow: 4px 4px 0 var(--line); }
+.reference-trigger:hover, .guide-trigger:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 rgba(29, 30, 27, .18); }
+.guide-trigger:hover { background: var(--accent-soft); }
+.welcome-actions .guide-trigger { min-height: 54px; }
 .reference-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(29, 30, 27, .38); }
 .reference-modal { width: min(100%, 760px); max-height: min(82vh, 760px); overflow: auto; padding: 28px; border: 1px solid var(--ink); background: var(--surface); box-shadow: 12px 12px 0 rgba(29, 30, 27, .18); }
 .reference-modal header { display: flex; justify-content: space-between; align-items: center; }
@@ -131,6 +136,22 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
 .reference-modal h2 { margin: 22px 0 14px; font-size: 26px; }
 .reference-modal > div { color: var(--muted); font-size: 16px; line-height: 1.8; }
 .reference-modal p { margin: 0 0 14px; }
+.guide-modal { width: min(100%, 820px); max-height: min(86vh, 820px); }
+.guide-modal h2 { max-width: 680px; margin-bottom: 22px; font-size: 30px; line-height: 1.3; }
+.guide-document { color: var(--ink) !important; }
+.guide-document > p { color: var(--muted); }
+.guide-block { padding: 20px 0; border-top: 1px solid var(--line); }
+.guide-block:first-of-type { margin-top: 8px; }
+.guide-block h3 { margin: 0 0 10px; font-size: 18px; }
+.guide-block p { color: var(--muted); }
+.guide-block ul, .guide-block ol { margin: 10px 0 0; padding-left: 23px; color: var(--muted); }
+.guide-block li { margin: 7px 0; padding-left: 3px; }
+.guide-template { margin: 0 0 4px; padding: 17px 18px; border-left: 3px solid var(--accent); background: var(--accent-soft); font-size: 16px; font-weight: 650; line-height: 1.8; }
+.intro-backdrop { position: fixed; z-index: 120; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(29,30,27,.64); }
+.intro-shell { position: relative; width: min(94vw, 1440px); height: min(88vh, 810px); overflow: hidden; border: 1px solid var(--ink); background: var(--paper); box-shadow: 14px 14px 0 rgba(29,30,27,.22); }
+.intro-shell iframe { width: 100%; height: 100%; display: block; border: 0; background: var(--paper); }
+.intro-close { position: absolute; z-index: 2; top: 18px; right: 18px; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--ink); background: var(--surface); }
+.intro-close:hover { background: var(--accent); }
 .example-list, .detailed-examples { display: grid; gap: 12px; }
 .example-list article, .detailed-example { padding: 16px 18px; color: var(--ink); border-left: 3px solid var(--accent); background: var(--accent-soft); }
 .example-list strong, .detailed-example h3 { font-size: 16px; }
@@ -230,4 +251,7 @@ input::placeholder, textarea::placeholder { color: #9c9d95; opacity: 1; }
   .summary-tetrad { grid-template-columns: 1fr; }
   .summary-edit-grid, .summary-edit-pillars { grid-template-columns: 1fr; }
   .summary-journey article { grid-template-columns: 1fr; gap: 4px; }
+  .intro-backdrop { padding: 8px; }
+  .intro-shell { width: calc(100vw - 16px); height: calc(100vh - 16px); box-shadow: none; }
+  .intro-close { top: 10px; right: 10px; }
 }

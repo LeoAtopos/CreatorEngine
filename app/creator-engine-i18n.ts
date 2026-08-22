@@ -9,9 +9,9 @@ export function detectSystemLanguage(): Language {
 
 const zh = {
   brand: "创作引擎", backHome: "返回欢迎页", progress: "当前步骤进度", start: "开始",
-  load: "载入", saved: "已保存", reading: "读取中", restart: "重新开始", switchLanguage: "Switch to English", switchLabel: "EN",
+  load: "载入", saved: "已保存", reading: "读取中", restart: "重新开始", intro: "使用引导", closeIntro: "关闭使用引导", introTitle: "CreatorEngine 使用引导", switchLanguage: "Switch to English", switchLabel: "EN",
   flow: "构思步骤", aggregate: "汇总", filled: "已填", empty: "空", stepsAria: "创作步骤",
-  viewReference: "查看参考", previous: "上一步", next: "下一步", author: "作者：李欧丁，Github：",
+  viewReference: "查看参考", viewGuide: "填写指引", guide: "填写指引", closeGuide: "关闭填写指引", previous: "上一步", next: "下一步", author: "作者：李欧丁，Github：",
   restartConfirm: "重新开始会清除这台设备上当前项目的全部填写内容，确定继续吗？",
   loadConfirm: "载入会替换当前项目的填写内容，确定继续吗？", loaded: "已载入", loadFailed: "载入失败", readFailed: "无法读取这个文件",
   saveFailed: "保存失败", cannotSave: "无法保存这个文件",
@@ -61,9 +61,9 @@ const zh = {
 
 const en: typeof zh = {
   brand: "CreatorEngine", backHome: "Return to welcome page", progress: "Current step progress", start: "Start",
-  load: "Load", saved: "Saved", reading: "Loading", restart: "Start Over", switchLanguage: "切换到中文", switchLabel: "中文",
+  load: "Load", saved: "Saved", reading: "Loading", restart: "Start Over", intro: "Guide", closeIntro: "Close guide", introTitle: "CreatorEngine Guide", switchLanguage: "切换到中文", switchLabel: "中文",
   flow: "Design Flow", aggregate: "Summary", filled: "Filled", empty: "Empty", stepsAria: "Creation steps",
-  viewReference: "View Examples", previous: "Previous", next: "Next", author: "Author: 李欧丁, GitHub: ",
+  viewReference: "View Examples", viewGuide: "Filling Guide", guide: "Filling Guide", closeGuide: "Close filling guide", previous: "Previous", next: "Next", author: "Author: 李欧丁, GitHub: ",
   restartConfirm: "Starting over will clear every answer in the current project on this device. Continue?",
   loadConfirm: "Loading this file will replace every answer in the current project. Continue?", loaded: "Loaded", loadFailed: "Load failed", readFailed: "This file could not be read",
   saveFailed: "Save failed", cannotSave: "This file could not be saved",

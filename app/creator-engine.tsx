@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
-import { ArrowCounterClockwise, ArrowLeft, ArrowRight, BookOpenText, Check, Copy, DownloadSimple, FloppyDisk, PencilSimple, UploadSimple, X } from "@phosphor-icons/react";
+import { ArrowCounterClockwise, ArrowLeft, ArrowRight, BookOpenText, Check, Compass, Copy, DownloadSimple, FloppyDisk, PencilSimple, UploadSimple, X } from "@phosphor-icons/react";
 import { buildMarkdown, emptyProject, hasStepContent, LEGACY_STORAGE_KEY, migrateLegacyProject, normalizeProject, parseMarkdownProject, STORAGE_KEY, type Language, type ProjectState, type TetradKey } from "./creator-engine-model";
 import { detectSystemLanguage, getUiCopy, LANGUAGE_STORAGE_KEY, type UiCopy } from "./creator-engine-i18n";
+import { getGuideDocument, type GuideTarget } from "./creator-engine-guides";
 import { localizedSteps, type StepId } from "./creator-engine-nodes";
 import { tetradReferenceGames } from "./creator-engine-tetrad-references";
 import { tetradReferenceGamesEn } from "./creator-engine-tetrad-references-en";
@@ -19,6 +20,7 @@ type PlayerTab = "firstLook" | "firstTen" | "arc";
 type ReferenceTarget = { step: "idea" | "sentences" | "player" | "tetrad"; pillar?: TetradKey };
 
 const LanguageContext = createContext<Language>("en");
+const INTRO_SEEN_STORAGE_KEY = "creator-engine.intro-seen.v1";
 const sentenceOrder: SentenceTab[] = ["gameplay", "experience", "hypothesis"];
 const tetradOrder: TetradKey[] = ["narrative", "mechanics", "aesthetics", "technology"];
 const playerOrder: PlayerTab[] = ["firstLook", "firstTen", "arc"];
@@ -37,6 +39,8 @@ export function CreatorEngine() {
   const [hydrated, setHydrated] = useState(false);
   const [copied, setCopied] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState<ReferenceTarget | null>(null);
+  const [guideOpen, setGuideOpen] = useState<GuideTarget | null>(null);
+  const [introOpen, setIntroOpen] = useState(false);
   const [activeSentence, setActiveSentence] = useState<SentenceTab>("gameplay");
   const [activeTetrad, setActiveTetrad] = useState<TetradKey>("narrative");
   const [activePlayer, setActivePlayer] = useState<PlayerTab>("firstLook");
@@ -59,6 +63,7 @@ export function CreatorEngine() {
       } catch {
         setProject(emptyProject(selectedLanguage));
       } finally {
+        setIntroOpen(window.localStorage.getItem(INTRO_SEEN_STORAGE_KEY) !== "1");
         setHydrated(true);
       }
     }, 0);
@@ -76,6 +81,16 @@ export function CreatorEngine() {
     document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
   }, [hydrated, language]);
 
+  useEffect(() => {
+    const receiveIntroMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== "creator-engine:intro-close") return;
+      window.localStorage.setItem(INTRO_SEEN_STORAGE_KEY, "1");
+      setIntroOpen(false);
+    };
+    window.addEventListener("message", receiveIntroMessage);
+    return () => window.removeEventListener("message", receiveIntroMessage);
+  }, []);
+
   const allSteps = localizedSteps(language);
   const creationSteps = allSteps.filter((step) => step.id !== "welcome");
   const current = allSteps.find((step) => step.id === project.currentStep)!;
@@ -83,6 +98,13 @@ export function CreatorEngine() {
   const currentReference: ReferenceTarget | null = project.currentStep === "tetrad"
     ? { step: "tetrad", pillar: activeTetrad }
     : project.currentStep === "idea" || project.currentStep === "sentences" || project.currentStep === "player" ? { step: project.currentStep } : null;
+  const currentGuide: GuideTarget = project.currentStep === "sentences"
+    ? { step: "sentences", tab: activeSentence }
+    : project.currentStep === "tetrad"
+      ? { step: "tetrad", pillar: activeTetrad }
+      : project.currentStep === "player"
+        ? { step: "player", tab: activePlayer }
+        : { step: project.currentStep };
 
   function edit(updater: (current: ProjectState) => ProjectState) {
     setProject((currentProject) => ({ ...updater(currentProject), updatedAt: new Date().toISOString() }));
@@ -126,9 +148,14 @@ export function CreatorEngine() {
     window.localStorage.removeItem(STORAGE_KEY);
     setProject(emptyProject(language));
   }
+  function closeIntro() {
+    window.localStorage.setItem(INTRO_SEEN_STORAGE_KEY, "1");
+    setIntroOpen(false);
+  }
   function switchLanguage() {
     setLanguage(language === "zh" ? "en" : "zh");
     setReferenceOpen(null);
+    setGuideOpen(null);
     setLoadNotice("");
   }
   async function loadMarkdown(event: ChangeEvent<HTMLInputElement>) {
@@ -177,6 +204,7 @@ export function CreatorEngine() {
       <div className="ce-progress" aria-label={`${t.progress} ${progress}%`}><span className="ce-progress-copy">{current.index === 0 ? t.start : `${String(current.index).padStart(2, "0")} · ${current.short}`}</span><span className="ce-progress-track"><i style={{ width: `${progress}%` }} /></span><span>{progress}%</span></div>
       <div className="ce-actions">
         <button className="language-switch" type="button" onClick={switchLanguage} aria-label={t.switchLanguage} title={t.switchLanguage}>{t.switchLabel}</button>
+        <button className="intro-button" type="button" onClick={() => setIntroOpen(true)}><BookOpenText size={18} />{t.intro}</button>
         <input ref={loadInput} className="load-input" type="file" accept=".md,text/markdown,text/plain" onChange={loadMarkdown} />
         <button className="load-button" type="button" onClick={() => loadInput.current?.click()}><UploadSimple size={18} />{t.load}</button>
         <span className="save-state" title={loadNotice || undefined}><FloppyDisk size={17} />{loadNotice || (hydrated ? t.saved : t.reading)}</span>
@@ -188,21 +216,26 @@ export function CreatorEngine() {
       return <li key={step.id} className={`${active ? "active" : ""} ${filled ? "filled" : ""}`}><button type="button" onClick={() => go(step.id)} aria-current={active ? "step" : undefined}><span>{filled ? <Check size={15} weight="bold" /> : String(step.index).padStart(2, "0")}</span><strong>{step.short}</strong><small>{step.id === "summary" ? t.aggregate : filled ? t.filled : t.empty}</small></button></li>;
     })}</ol></aside>
     <main className={`ce-main step-${project.currentStep}`}>
-      {project.currentStep === "welcome" ? <Welcome project={project} edit={edit} go={go} /> : <article className="step-page">
+      {project.currentStep === "welcome" ? <Welcome project={project} edit={edit} go={go} onGuide={() => setGuideOpen({ step: "welcome" })} /> : <article className="step-page">
         {project.currentStep !== "sentences" && <header className="step-heading"><h1>{current.title}</h1></header>}
         <div className="step-content">{renderStep(project.currentStep, project, edit, copySummary, downloadSummary, copied, { sentence: activeSentence, setSentence: setActiveSentence, tetrad: activeTetrad, setTetrad: setActiveTetrad, player: activePlayer, setPlayer: setActivePlayer })}</div>
-        {currentReference && <button className="reference-trigger" type="button" onClick={() => setReferenceOpen(currentReference)}><BookOpenText size={19} weight="bold" />{t.viewReference}</button>}
+        <div className="step-help-actions">
+          {currentReference && <button className="reference-trigger" type="button" onClick={() => setReferenceOpen(currentReference)}><BookOpenText size={19} weight="bold" />{t.viewReference}</button>}
+          <button className="guide-trigger" type="button" onClick={() => setGuideOpen(currentGuide)}><Compass size={19} weight="bold" />{t.viewGuide}</button>
+        </div>
         <footer className="step-navigation"><button className="back-button" type="button" onClick={goPreviousPage}><ArrowLeft size={19} />{t.previous}</button>{project.currentStep !== "summary" && <button className="next-button" type="button" onClick={goNextPage}>{t.next}<ArrowRight size={19} /></button>}</footer>
       </article>}
     </main>
     <footer className="ce-footer">{t.author}<a href="https://github.com/LeoAtopos/CreatorEngine" target="_blank" rel="noreferrer">https://github.com/LeoAtopos/CreatorEngine</a></footer>
     {referenceOpen && <ReferenceModal target={referenceOpen} onClose={() => setReferenceOpen(null)} />}
+    {guideOpen && <GuideModal target={guideOpen} onClose={() => setGuideOpen(null)} />}
+    {introOpen && <IntroOverlay language={language} title={t.introTitle} closeLabel={t.closeIntro} onClose={closeIntro} />}
   </div></LanguageContext.Provider>;
 }
 
-function Welcome({ project, edit, go }: StepProps & { go: (step: StepId) => void }) {
+function Welcome({ project, edit, go, onGuide }: StepProps & { go: (step: StepId) => void; onGuide: () => void }) {
   const { t } = useI18n();
-  return <section className="welcome-page"><h1>{t.welcomeTitle}</h1><p className="welcome-subtitle">{t.welcomeSubtitle}</p><label className="project-name-field"><span>{t.projectName}</span><input value={project.name} placeholder={t.enter} onChange={(event) => edit((current) => ({ ...current, name: event.target.value }))} /></label><div className="welcome-actions"><button className="hero-button" type="button" onClick={() => go("idea")}><span>{t.begin}</span><ArrowRight size={22} /></button></div></section>;
+  return <section className="welcome-page"><h1>{t.welcomeTitle}</h1><p className="welcome-subtitle">{t.welcomeSubtitle}</p><label className="project-name-field"><span>{t.projectName}</span><input value={project.name} placeholder={t.enter} onChange={(event) => edit((current) => ({ ...current, name: event.target.value }))} /></label><div className="welcome-actions"><button className="hero-button" type="button" onClick={() => go("idea")}><span>{t.begin}</span><ArrowRight size={22} /></button><button className="guide-trigger" type="button" onClick={onGuide}><Compass size={19} weight="bold" />{t.viewGuide}</button></div></section>;
 }
 
 type SubpageProps = { sentence: SentenceTab; setSentence: (value: SentenceTab) => void; tetrad: TetradKey; setTetrad: (value: TetradKey) => void; player: PlayerTab; setPlayer: (value: PlayerTab) => void };
@@ -375,6 +408,47 @@ function ReferenceModal({ target, onClose }: { target: ReferenceTarget; onClose:
   else if (target.step === "player") { title = t.playerReference; body = <><p>{t.playerReferenceIntro}</p><PlayerReferenceExamples /></>; }
   else if (target.step === "tetrad" && target.pillar) { title = t.tetradReferenceTitles[target.pillar]; body = <><p>{t.tetradReferenceIntros[target.pillar]}</p><TetradReferenceExamples pillar={target.pillar} /></>; }
   return <div className="reference-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="reference-modal" role="dialog" aria-modal="true" aria-labelledby="reference-title"><header><span>{t.reference}</span><button type="button" onClick={onClose} aria-label={t.closeReference}><X size={20} /></button></header><h2 id="reference-title">{title}</h2><div>{body}</div></section></div>;
+}
+
+function GuideModal({ target, onClose }: { target: GuideTarget; onClose: () => void }) {
+  const { language, t } = useI18n();
+  const document = getGuideDocument(language, target);
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [onClose]);
+  return <div className="reference-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="reference-modal guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+      <header><span>{t.guide} · {document.source}</span><button type="button" onClick={onClose} aria-label={t.closeGuide}><X size={20} /></button></header>
+      <h2 id="guide-title">{document.title}</h2>
+      <div className="guide-document">
+        {document.intro?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        {document.blocks.map((block, index) => <section className="guide-block" key={`${block.title ?? "block"}-${index}`}>
+          {block.title && <h3>{block.title}</h3>}
+          {block.template && <div className="guide-template">{block.template}</div>}
+          {block.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          {block.bullets && (block.ordered
+            ? <ol>{block.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ol>
+            : <ul>{block.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>)}
+        </section>)}
+      </div>
+    </section>
+  </div>;
+}
+
+function IntroOverlay({ language, title, closeLabel, onClose }: { language: Language; title: string; closeLabel: string; onClose: () => void }) {
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [onClose]);
+  return <div className="intro-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="intro-shell" role="dialog" aria-modal="true" aria-label={title}>
+      <button className="intro-close" type="button" onClick={onClose} aria-label={closeLabel}><X size={22} /></button>
+      <iframe title={title} src={`creator-engine-intro.html?lang=${language}`} />
+    </section>
+  </div>;
 }
 
 function updateRecord(edit: StepProps["edit"], section: "gameplay" | "experience" | "hypothesis", field: string, value: string) { edit((current) => ({ ...current, [section]: { ...current[section], [field]: value } } as ProjectState)); }

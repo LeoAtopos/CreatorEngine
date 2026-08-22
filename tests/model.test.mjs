@@ -14,6 +14,33 @@ import {
 import { creationSteps, nextStep, previousStep, steps } from "../app/creator-engine-nodes.ts";
 import { tetradReferenceGames } from "../app/creator-engine-tetrad-references.ts";
 import { tetradReferenceGamesEn } from "../app/creator-engine-tetrad-references-en.ts";
+import { getGuideDocument } from "../app/creator-engine-guides.ts";
+
+test("every visible page has a complete Chinese and English filling guide", () => {
+  const targets = [
+    { step: "welcome" },
+    { step: "idea" },
+    { step: "sentences", tab: "gameplay" },
+    { step: "sentences", tab: "experience" },
+    { step: "sentences", tab: "hypothesis" },
+    { step: "tetrad", pillar: "narrative" },
+    { step: "tetrad", pillar: "mechanics" },
+    { step: "tetrad", pillar: "aesthetics" },
+    { step: "tetrad", pillar: "technology" },
+    { step: "player", tab: "firstLook" },
+    { step: "player", tab: "firstTen" },
+    { step: "player", tab: "arc" },
+    { step: "summary" },
+  ];
+
+  for (const target of targets) {
+    for (const language of ["zh", "en"]) {
+      const guide = getGuideDocument(language, target);
+      assert.ok(guide.title.length > 0, `${language} ${JSON.stringify(target)} needs a title`);
+      assert.ok((guide.intro?.length ?? 0) + guide.blocks.length > 0, `${language} ${JSON.stringify(target)} needs content`);
+    }
+  }
+});
 
 test("all reference sections use the same ten games in one fixed order", () => {
   assert.deepEqual(tetradReferenceGames.map((game) => game.title), [

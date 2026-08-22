@@ -38,3 +38,9 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+
+# HyperFrames local previews and snapshots
+hyperframes/**/.hyperframes/
+hyperframes/**/.thumbnails/
+hyperframes/**/AGENTS.md
+hyperframes/**/CLAUDE.md

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 async function render() {
@@ -27,5 +28,20 @@ test("server-renders the simplified CreatorEngine creation guide", async () => {
   assert.match(html, /Four Pillars/);
   assert.match(html, /Player Side/);
   assert.match(html, /Design Summary/);
+  assert.match(html, /Filling Guide/);
+  assert.match(html, /class="intro-button"[\s\S]*?Guide<\/button>/);
   assert.match(html, /aria-label="切换到中文"/);
+});
+
+test("standalone guide stays local and supports click-through navigation", async () => {
+  const html = await readFile(
+    new URL("../public/creator-engine-intro.html", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(html, /creator-engine:intro-close/);
+  assert.match(html, /ArrowRight/);
+  assert.match(html, /goNext/);
+  assert.match(html, /goPrevious/);
+  assert.doesNotMatch(html, /https?:\/\//);
 });

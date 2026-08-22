@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CreatorEngine · 使用引导</title>
+    <style>
+      :root { --paper:#f6f5f0; --surface:#fbfaf6; --ink:#1d1e1b; --muted:#666762; --line:#d9d8d1; --accent:#b9dc42; }
+      * { box-sizing: border-box; }
+      html, body { width:100%; height:100%; margin:0; overflow:hidden; background:var(--paper); }
+      body { color:var(--ink); font-family:"Segoe UI","Microsoft YaHei UI","PingFang SC",sans-serif; -webkit-font-smoothing:antialiased; }
+      button { color:inherit; font:inherit; cursor:pointer; }
+      button:focus-visible { outline:3px solid rgba(185,220,66,.75); outline-offset:3px; }
+      .mono { font-family:"Cascadia Mono","SFMono-Regular",Consolas,monospace; font-variant-numeric:tabular-nums; }
+      .deck { position:relative; width:100%; height:100%; display:grid; grid-template-rows:auto 1fr auto; padding:clamp(22px,3.4vw,54px) clamp(24px,4.6vw,76px) clamp(20px,3vw,44px); overflow:hidden; background:var(--paper); }
+      .grid { position:absolute; inset:0; opacity:.55; pointer-events:none; background-image:linear-gradient(var(--line) 1px,rgba(217,216,209,0) 1px),linear-gradient(90deg,var(--line) 1px,rgba(217,216,209,0) 1px); background-size:clamp(52px,6vw,96px) clamp(52px,6vw,96px); }
+      .ghost { position:absolute; z-index:0; right:2.4vw; top:-7vw; color:rgba(29,30,27,.045); font-size:clamp(180px,25vw,430px); font-weight:900; line-height:1; letter-spacing:-.1em; pointer-events:none; }
+      .deck-header,.deck-footer,.slide { position:relative; z-index:2; }
+      .deck-header { min-height:48px; display:flex; justify-content:space-between; align-items:center; gap:24px; padding-bottom:12px; border-bottom:2px solid var(--ink); }
+      .brand { display:flex; gap:12px; align-items:center; font-size:clamp(14px,1.5vw,22px); font-weight:800; }
+      .mark { width:clamp(36px,3.4vw,48px); height:clamp(36px,3.4vw,48px); display:grid; place-items:center; flex:0 0 auto; color:var(--paper); border-radius:50%; background:var(--ink); font-size:clamp(12px,1.1vw,16px); }
+      .meta { display:flex; gap:clamp(12px,2vw,30px); align-items:center; color:var(--muted); font-size:clamp(11px,1.1vw,16px); letter-spacing:.06em; }
+      .close { width:40px; height:40px; display:grid; place-items:center; padding:0; border:1px solid var(--ink); background:var(--surface); font-size:22px; line-height:1; }
+      .close:hover { background:var(--accent); }
+      .embedded .deck-header .close { visibility:hidden; }
+      .slide { min-height:0; display:grid; grid-template-columns:minmax(0,.88fr) minmax(360px,1.12fr); gap:clamp(30px,5vw,88px); align-items:center; padding:clamp(24px,4vw,60px) 0; cursor:pointer; animation:enter .32s ease-out both; }
+      .slide-copy { display:flex; flex-direction:column; gap:clamp(16px,2vw,28px); }
+      .kicker { display:flex; gap:12px; align-items:center; color:var(--muted); font-size:clamp(12px,1.25vw,18px); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+      .kicker::before { width:44px; height:8px; content:""; background:var(--accent); }
+      h1 { margin:0; font-size:clamp(44px,6vw,98px); font-weight:850; line-height:1.03; letter-spacing:-.065em; }
+      .summary { margin:0; max-width:720px; color:var(--muted); font-size:clamp(17px,1.65vw,26px); font-weight:350; line-height:1.62; }
+      .visual { min-height:0; display:flex; flex-direction:column; justify-content:center; border-top:2px solid var(--ink); border-bottom:2px solid var(--ink); background:rgba(251,250,246,.72); }
+      .row { min-height:clamp(64px,8vh,108px); display:grid; grid-template-columns:56px minmax(120px,.55fr) 1fr; gap:18px; align-items:center; padding:12px 18px; border-bottom:1px solid var(--line); }
+      .row:last-child { border-bottom:0; }
+      .row.active { background:var(--accent); }
+      .row-index { color:var(--muted); font-size:clamp(12px,1.1vw,17px); }
+      .row strong { font-size:clamp(17px,1.8vw,28px); }
+      .row p { margin:0; color:var(--muted); font-size:clamp(14px,1.35vw,20px); line-height:1.48; }
+      .row.active p,.row.active .row-index { color:var(--ink); }
+      .formula-list { display:grid; border-top:2px solid var(--ink); }
+      .formula { padding:clamp(14px,2vh,25px) 18px; border-bottom:1px solid var(--line); font-size:clamp(15px,1.45vw,21px); line-height:1.55; }
+      .formula b { display:block; margin-bottom:4px; }
+      .blank { background:linear-gradient(to top,var(--accent) 8px,rgba(185,220,66,0) 8px); }
+      .logic { display:grid; gap:14px; padding:clamp(18px,3vw,38px); border:2px solid var(--ink); background:var(--surface); }
+      .logic-line { display:grid; grid-template-columns:1fr auto 1fr; gap:14px; align-items:center; font-size:clamp(25px,3.6vw,58px); font-weight:820; letter-spacing:-.045em; }
+      .logic-line span:nth-child(2) { text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:8px; text-underline-offset:-2px; }
+      .journey { display:grid; grid-template-columns:repeat(3,1fr); border:2px solid var(--ink); }
+      .journey article { min-height:clamp(180px,30vh,330px); display:flex; flex-direction:column; padding:clamp(18px,2.3vw,32px); border-right:1px solid var(--ink); }
+      .journey article:last-child { border-right:0; background:var(--accent); }
+      .journey h2 { margin:auto 0 10px; font-size:clamp(24px,3vw,44px); letter-spacing:-.04em; }
+      .journey p { margin:0; color:var(--muted); font-size:clamp(13px,1.25vw,18px); line-height:1.5; }
+      .journey article:last-child p { color:var(--ink); }
+      .deck-footer { display:grid; grid-template-columns:1fr auto 1fr; gap:22px; align-items:center; padding-top:16px; border-top:2px solid var(--ink); }
+      .hint { color:var(--muted); font-size:clamp(11px,1.05vw,15px); }
+      .dots { display:flex; gap:8px; justify-content:center; }
+      .dot { width:28px; height:8px; padding:0; border:0; background:var(--line); }
+      .dot.active { background:var(--accent); box-shadow:inset 0 0 0 1px var(--ink); }
+      .controls { justify-self:end; display:flex; gap:8px; }
+      .controls button { min-height:42px; display:inline-flex; align-items:center; gap:8px; padding:0 16px; border:1px solid var(--ink); background:var(--surface); font-size:14px; font-weight:700; }
+      .controls .next { color:var(--paper); background:var(--ink); }
+      .controls button:hover:not(:disabled) { color:var(--ink); background:var(--accent); }
+      .controls button:disabled { opacity:.35; cursor:not-allowed; }
+      @keyframes enter { from { opacity:0; transform:translateX(18px); } to { opacity:1; transform:translateX(0); } }
+      @media (max-width:760px), (max-aspect-ratio:4/3) {
+        .deck { padding:18px; }
+        .brand span:last-child,.meta span:first-child,.hint { display:none; }
+        .slide { grid-template-columns:1fr; align-content:center; gap:22px; padding:20px 0; }
+        h1 { font-size:clamp(36px,9vw,60px); }
+        .summary { font-size:15px; }
+        .visual { max-height:43vh; overflow:auto; }
+        .row { min-height:58px; grid-template-columns:42px 100px 1fr; gap:10px; padding:8px 10px; }
+        .journey article { min-height:180px; padding:12px; }
+        .journey h2 { font-size:20px; }
+        .journey p { font-size:12px; }
+        .deck-footer { grid-template-columns:auto 1fr; }
+        .dots { justify-content:flex-start; }
+      }
+      @media (prefers-reduced-motion:reduce) { .slide { animation:none; } }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <div class="grid" aria-hidden="true"></div><div id="ghost" class="ghost mono" aria-hidden="true">01</div>
+      <header class="deck-header"><div class="brand"><span class="mark mono">CE</span><span>CreatorEngine / 创作引擎</span></div><div class="meta mono"><span id="sectionLabel">INTRODUCTION</span><b id="counter">01 / 06</b><button id="close" class="close" type="button" aria-label="关闭">×</button></div></header>
+      <section id="slide" class="slide" tabindex="0" aria-live="polite"></section>
+      <footer class="deck-footer"><span id="hint" class="hint">点击页面继续 · 也可使用键盘方向键</span><nav id="dots" class="dots" aria-label="引导页面"></nav><div class="controls"><button id="previous" type="button">← <span id="previousLabel">上一步</span></button><button id="next" class="next" type="button"><span id="nextLabel">下一步</span> →</button></div></footer>
+    </main>
+    <script>
+      const zh = {
+        close:"关闭使用引导", previous:"上一步", next:"下一步", finish:"开始使用", hint:"点击页面继续 · 也可使用键盘方向键", nav:"引导页面",
+        slides:[
+          { section:"INTRODUCTION", kicker:"游戏创作方法", title:"不是制作引擎。<br>而是创作引擎。", summary:"从最初的想法出发，通过结构化的文本填空，帮助创作者把游戏构思说清楚。", visual:'<div class="row"><span class="row-index mono">01</span><strong>输入</strong><p>保留创作最初的火花</p></div><div class="row active"><span class="row-index mono">02</span><strong>言语化</strong><p>将感性判断变成可讨论的文本</p></div><div class="row"><span class="row-index mono">03</span><strong>设计框架</strong><p>形成可检查、可同步的方案</p></div>' },
+          { section:"DESIGN ARTICULATION", kicker:"基础理论", title:"先说清楚，<br>再开始制作。", summary:"提前思考，减少遗漏与浪费；深入沟通，让多人协作拥有共同的判断标准。", visual:'<div class="logic"><div class="logic-line"><span>说不清楚</span><span>→</span><span>做不明白</span></div><div class="logic-line"><span>说不清楚</span><span>→</span><span>做不统一</span></div></div>' },
+          { section:"THREE SENTENCES", kicker:"从火花到结构", title:"一个想法，<br>三句话。", summary:"30 秒内回答三个问题：这是什么游戏、它提供什么体验，以及这种体验如何得到验证。", visual:'<div class="formula-list"><div class="formula"><b>01 · 什么游戏</b>玩家作为<span class="blank">身份</span>，反复<span class="blank">核心动作</span>，以<span class="blank">目标</span>；但有<span class="blank">约束或反转</span>。</div><div class="formula"><b>02 · 什么体验</b>为<span class="blank">目标玩家</span>提供<span class="blank">核心感受</span>，通过<span class="blank">关键动态</span>实现。</div><div class="formula"><b>03 · 如何验证</b>机制产生<span class="blank">行为或策略</span>，形成<span class="blank">目标体验</span>；证据是<span class="blank">可观察信号</span>。</div></div>' },
+          { section:"FOUR PILLARS", kicker:"游戏设计四大支柱", title:"先定义地基，<br>再说明个性。", summary:"每根支柱都写清“基础框架 + 风格特点”，并说明它对另外三项的指导、支持或要求。", visual:'<div class="row"><span class="row-index mono">01 / N</span><strong>叙事</strong><p>玩家是谁，意义如何逐步显现</p></div><div class="row active"><span class="row-index mono">02 / M</span><strong>机制</strong><p>规则如何产生选择、反馈和成长</p></div><div class="row"><span class="row-index mono">03 / A</span><strong>美学</strong><p>画面、声音与交互形成怎样的感受</p></div><div class="row"><span class="row-index mono">04 / T</span><strong>技术</strong><p>体验成立需要哪些能力与验证</p></div>' },
+          { section:"PLAYER SIDE", kicker:"从玩家角度思考", title:"想象完整的<br>体验过程。", summary:"不要只描述创作者想做什么，还要想象玩家如何看见、进入、留下，并最终评价游戏。", visual:'<div class="journey"><article><span class="mono">01 / BEFORE</span><h2>看见游戏</h2><p>主题、类型和关联游戏建立体验预期。</p></article><article><span class="mono">02 / 10 MIN</span><h2>决定留下</h2><p>尽早给出独特体验和继续游玩的目标。</p></article><article><span class="mono">03 / FINALE</span><h2>完成体验</h2><p>中后期变化形成决定游戏上限的终极体验。</p></article></div>' },
+          { section:"USE THE DOCUMENT", kicker:"设计摘要不是终点", title:"持续更新，<br>共同执行。", summary:"在制作前、制作中与制作后持续阅读，让设计成为可以讨论、检查、同步和迭代的共同对象。", visual:'<div class="row"><span class="row-index mono">01</span><strong>制作前</strong><p>理清思路、查漏补缺、筛选项目</p></div><div class="row active"><span class="row-index mono">02</span><strong>制作中</strong><p>保持团队认知同步与理解清晰</p></div><div class="row"><span class="row-index mono">03</span><strong>制作后</strong><p>根据反馈定位差异与问题</p></div>' },
+        ]
+      };
+      const en = {
+        close:"Close guide", previous:"Previous", next:"Next", finish:"Start using", hint:"Click the page to continue · Arrow keys also work", nav:"Guide pages",
+        slides:[
+          { section:"INTRODUCTION", kicker:"A method for game creation", title:"Not a production engine.<br>A creation engine.", summary:"Starting from the earliest idea, structured prompts help creators articulate and organize a game concept.", visual:'<div class="row"><span class="row-index mono">01</span><strong>Input</strong><p>Preserve the original creative spark</p></div><div class="row active"><span class="row-index mono">02</span><strong>Articulate</strong><p>Turn intuition into discussable language</p></div><div class="row"><span class="row-index mono">03</span><strong>Framework</strong><p>Create a design the team can inspect and share</p></div>' },
+          { section:"DESIGN ARTICULATION", kicker:"The foundation", title:"Make it clear.<br>Then make it.", summary:"Think ahead to reduce omissions and waste. Communicate deeply so a team can share the same standards of judgment.", visual:'<div class="logic"><div class="logic-line"><span>Unclear words</span><span>→</span><span>Unclear work</span></div><div class="logic-line"><span>Unclear words</span><span>→</span><span>Inconsistent work</span></div></div>' },
+          { section:"THREE SENTENCES", kicker:"From spark to structure", title:"One idea.<br>Three sentences.", summary:"Answer three questions in 30 seconds: What is the game? What experience does it offer? How can that experience be tested?", visual:'<div class="formula-list"><div class="formula"><b>01 · What game?</b>The player is <span class="blank">identity</span>, repeatedly <span class="blank">core action</span> to reach <span class="blank">goal</span>; but <span class="blank">constraint or reversal</span>.</div><div class="formula"><b>02 · What experience?</b>Provide <span class="blank">core feeling</span> for <span class="blank">target players</span> through <span class="blank">key dynamics</span>.</div><div class="formula"><b>03 · How to test?</b>A mechanic produces <span class="blank">behavior or strategy</span> and a <span class="blank">target experience</span>; evidence is an <span class="blank">observable signal</span>.</div></div>' },
+          { section:"FOUR PILLARS", kicker:"Four pillars of game design", title:"Define the foundation.<br>Then the character.", summary:"For each pillar, state its foundation and signature qualities, then explain how it guides, supports, or constrains the other three.", visual:'<div class="row"><span class="row-index mono">01 / N</span><strong>Narrative</strong><p>Who the player is and how meaning emerges</p></div><div class="row active"><span class="row-index mono">02 / M</span><strong>Mechanics</strong><p>How rules create choice, feedback, and growth</p></div><div class="row"><span class="row-index mono">03 / A</span><strong>Aesthetics</strong><p>How visuals, audio, and interaction create feeling</p></div><div class="row"><span class="row-index mono">04 / T</span><strong>Technology</strong><p>What capabilities and validation the experience needs</p></div>' },
+          { section:"PLAYER SIDE", kicker:"Think from the player side", title:"Imagine the complete<br>experience journey.", summary:"Do not only describe what the creator wants to make. Imagine how players discover, enter, stay, and finally evaluate the game.", visual:'<div class="journey"><article><span class="mono">01 / BEFORE</span><h2>Discover</h2><p>Theme, genre, and comparable games form expectations.</p></article><article><span class="mono">02 / 10 MIN</span><h2>Stay</h2><p>Deliver distinction and a reason to continue early.</p></article><article><span class="mono">03 / FINALE</span><h2>Complete</h2><p>Mid-to-late change creates the final experience.</p></article></div>' },
+          { section:"USE THE DOCUMENT", kicker:"The summary is not the end", title:"Keep it current.<br>Build it together.", summary:"Revisit it before, during, and after production so design remains something the team can discuss, inspect, align around, and revise.", visual:'<div class="row"><span class="row-index mono">01</span><strong>Before</strong><p>Clarify direction, find gaps, and compare projects</p></div><div class="row active"><span class="row-index mono">02</span><strong>During</strong><p>Maintain a clear shared understanding</p></div><div class="row"><span class="row-index mono">03</span><strong>After</strong><p>Use feedback to locate differences and problems</p></div>' },
+        ]
+      };
+
+      const language = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "zh";
+      const copy = language === "en" ? en : zh;
+      document.documentElement.lang = language === "en" ? "en" : "zh-CN";
+      if (window.parent !== window) document.body.classList.add("embedded");
+      let index = 0;
+      const slide = document.getElementById("slide");
+      const dots = document.getElementById("dots");
+      const previous = document.getElementById("previous");
+      const next = document.getElementById("next");
+
+      function render() {
+        const item = copy.slides[index];
+        slide.classList.remove("slide"); void slide.offsetWidth; slide.classList.add("slide");
+        slide.innerHTML = '<div class="slide-copy"><div class="kicker">' + item.kicker + '</div><h1>' + item.title + '</h1><p class="summary">' + item.summary + '</p></div><div class="visual">' + item.visual + '</div>';
+        document.getElementById("sectionLabel").textContent = item.section;
+        document.getElementById("counter").textContent = String(index + 1).padStart(2,"0") + " / " + String(copy.slides.length).padStart(2,"0");
+        document.getElementById("ghost").textContent = String(index + 1).padStart(2,"0");
+        previous.disabled = index === 0;
+        document.getElementById("nextLabel").textContent = index === copy.slides.length - 1 ? copy.finish : copy.next;
+        [...dots.children].forEach((dot,i) => { dot.classList.toggle("active",i === index); dot.setAttribute("aria-current",i === index ? "step" : "false"); });
+      }
+      function closeGuide() {
+        if (window.parent !== window) window.parent.postMessage({ type:"creator-engine:intro-close" }, location.origin);
+        else if (history.length > 1) history.back();
+        else window.close();
+      }
+      function goNext() { if (index < copy.slides.length - 1) { index += 1; render(); } else closeGuide(); }
+      function goPrevious() { if (index > 0) { index -= 1; render(); } }
+
+      document.getElementById("close").setAttribute("aria-label",copy.close);
+      document.getElementById("close").addEventListener("click",closeGuide);
+      document.getElementById("previousLabel").textContent = copy.previous;
+      document.getElementById("hint").textContent = copy.hint;
+      dots.setAttribute("aria-label",copy.nav);
+      copy.slides.forEach((_,i) => { const dot = document.createElement("button"); dot.type="button"; dot.className="dot"; dot.setAttribute("aria-label",String(i + 1)); dot.addEventListener("click",() => { index=i; render(); }); dots.appendChild(dot); });
+      previous.addEventListener("click",goPrevious); next.addEventListener("click",goNext);
+      slide.addEventListener("click",goNext);
+      window.addEventListener("keydown",event => { if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); goNext(); } if (event.key === "ArrowLeft") goPrevious(); if (event.key === "Escape") closeGuide(); });
+      render();
+    </script>
+  </body>
+</html>

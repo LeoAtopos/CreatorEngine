@@ -17,6 +17,6 @@ npm run tauri:build
 
 构建完成后：
 
-- 便捷输出目录：`output/CreatorEngine.exe` 与 `output/CreatorEngine_0.1.0_x64-setup.exe`
+- 便捷输出目录：`output/CreatorEngine.exe` 与 `output/CreatorEngine_0.2.0_x64-setup.exe`
 - 主程序：`src-tauri/target/release/creator-engine-desktop.exe`
-- NSIS 安装程序：`src-tauri/target/release/bundle/nsis/CreatorEngine_0.1.0_x64-setup.exe`
+- NSIS 安装程序：`src-tauri/target/release/bundle/nsis/CreatorEngine_0.2.0_x64-setup.exe`

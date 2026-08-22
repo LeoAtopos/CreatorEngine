@@ -1,6 +1,6 @@
 [package]
 name = "creator-engine-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "CreatorEngine desktop application"
 authors = ["CreatorEngine"]
 edition = "2021"

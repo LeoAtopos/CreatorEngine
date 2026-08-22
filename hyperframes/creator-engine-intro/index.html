@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>CreatorEngine · 创作引擎介绍</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "IBM Plex Sans"; src: local("IBM Plex Sans"); }
+      @font-face { font-family: "IBM Plex Mono"; src: local("IBM Plex Mono"); }
+      @font-face { font-family: "Microsoft YaHei UI"; src: local("Microsoft YaHei UI"); }
+      @font-face { font-family: "PingFang SC"; src: local("PingFang SC"); }
+      @font-face { font-family: "Cascadia Mono"; src: local("Cascadia Mono"); }
+      :root {
+        --paper: #f6f5f0;
+        --surface: #fbfaf6;
+        --ink: #1d1e1b;
+        --muted: #666762;
+        --line: #d9d8d1;
+        --accent: #b9dc42;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; margin: 0; overflow: hidden; background: var(--paper); }
+      body { color: var(--ink); font-family: "IBM Plex Sans", "Microsoft YaHei UI", "PingFang SC", sans-serif; }
+      .mono { font-family: "IBM Plex Mono", "Cascadia Mono", monospace; font-variant-numeric: tabular-nums; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+
+      .scene { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--paper); }
+      #scene-1 { z-index: 1; }
+      #scene-2 { z-index: 2; opacity: 0; }
+      #scene-3 { z-index: 3; opacity: 0; }
+      #scene-4 { z-index: 4; opacity: 0; }
+      #scene-5 { z-index: 5; opacity: 0; }
+      #scene-6 { z-index: 6; opacity: 0; }
+      .scene-content { position: relative; z-index: 2; width: 100%; height: 100%; display: flex; flex-direction: column; padding: 70px 88px 76px; gap: 38px; }
+
+      .grid-bg { position: absolute; z-index: 0; inset: 0; opacity: .58; background-image: linear-gradient(var(--line) 1px, rgba(217,216,209,0) 1px), linear-gradient(90deg, var(--line) 1px, rgba(217,216,209,0) 1px); background-size: 96px 96px; }
+      .corner-block { position: absolute; z-index: 1; right: 0; bottom: 0; width: 430px; height: 340px; background: var(--accent); opacity: .18; }
+      .index-ghost { position: absolute; z-index: 1; right: 54px; top: -100px; color: rgba(29,30,27,.045); font-size: 430px; font-weight: 900; line-height: 1; letter-spacing: -.1em; }
+      .scene-rule { position: absolute; z-index: 1; left: 88px; right: 88px; bottom: 58px; height: 3px; background: var(--ink); transform-origin: left center; }
+
+      .frame-header { min-height: 54px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--ink); }
+      .brand { display: flex; gap: 16px; align-items: center; font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+      .brand-mark { width: 46px; height: 46px; display: grid; place-items: center; color: var(--paper); border-radius: 50%; background: var(--ink); font-size: 17px; }
+      .frame-meta { display: flex; gap: 30px; align-items: center; color: var(--muted); font-size: 18px; letter-spacing: .06em; }
+      .frame-meta b { color: var(--ink); font-weight: 700; }
+      .eyebrow { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 19px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+      .eyebrow::before { width: 52px; height: 9px; content: ""; background: var(--accent); }
+      .display { margin: 0; max-width: 1300px; font-size: 112px; font-weight: 850; line-height: 1.04; letter-spacing: -.065em; }
+      .display span { display: block; }
+      .display .accented { color: var(--ink); text-decoration-line: underline; text-decoration-color: var(--accent); text-decoration-thickness: 18px; text-underline-offset: -4px; }
+      .lede { margin: 0; max-width: 930px; color: var(--muted); font-size: 28px; font-weight: 350; line-height: 1.65; }
+
+      .hero-layout { flex: 1; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(460px, .55fr); gap: 72px; align-items: center; }
+      .hero-copy { display: flex; flex-direction: column; gap: 28px; }
+      .system-diagram { display: flex; flex-direction: column; border: 2px solid var(--ink); background: var(--surface); }
+      .system-diagram header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 2px solid var(--ink); font-size: 17px; }
+      .system-node { min-height: 106px; display: grid; grid-template-columns: 68px 1fr; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+      .system-node:last-child { border-bottom: 0; }
+      .system-node b { font-size: 19px; }
+      .system-node p { margin: 5px 0 0; color: var(--muted); font-size: 18px; line-height: 1.45; }
+      .node-index { color: var(--muted); font-size: 18px; }
+
+      .logic-layout { flex: 1; display: grid; grid-template-columns: 1.08fr .92fr; gap: 76px; align-items: stretch; }
+      .logic-stack { display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+      .logic-word { display: flex; gap: 28px; align-items: baseline; font-size: 86px; font-weight: 850; line-height: 1; letter-spacing: -.055em; }
+      .logic-word .arrow { color: var(--ink); font-family: "IBM Plex Mono", monospace; font-size: 60px; text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 10px; text-underline-offset: -2px; }
+      .logic-caption { max-width: 740px; margin: 16px 0 0; color: var(--muted); font-size: 27px; line-height: 1.6; }
+      .principle-panel { display: flex; flex-direction: column; justify-content: space-between; padding: 38px; border: 2px solid var(--ink); background: var(--surface); }
+      .principle-panel .mono { color: var(--muted); font-size: 18px; }
+      .principle-panel h2 { margin: 0; font-size: 68px; line-height: 1.08; letter-spacing: -.045em; }
+      .principle-panel p { margin: 0; color: var(--muted); font-size: 24px; line-height: 1.62; }
+      .principle-meter { height: 18px; display: grid; grid-template-columns: 2fr 1fr; gap: 6px; }
+      .principle-meter span:first-child { background: var(--accent); }
+      .principle-meter span:last-child { background: var(--ink); }
+
+      .method-layout { flex: 1; display: grid; grid-template-columns: .74fr 1.26fr; gap: 58px; min-height: 0; }
+      .idea-column { display: flex; flex-direction: column; gap: 20px; padding: 34px; border: 2px solid var(--ink); background: var(--surface); }
+      .idea-column h2 { margin: 0; font-size: 54px; line-height: 1.12; letter-spacing: -.04em; }
+      .idea-column p { margin: 0; color: var(--muted); font-size: 23px; line-height: 1.6; }
+      .idea-input { margin-top: auto; min-height: 190px; padding: 24px; border: 1px solid var(--ink); background: var(--paper); color: var(--muted); font-size: 22px; line-height: 1.55; }
+      .idea-input span { display: block; margin-top: 8px; }
+      .sentence-column { display: grid; grid-template-rows: repeat(3, 1fr); border-top: 2px solid var(--ink); }
+      .formula { display: grid; grid-template-columns: 74px 1fr; gap: 18px; align-items: center; padding: 22px 10px; border-bottom: 2px solid var(--ink); }
+      .formula-index { width: 52px; height: 52px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 50%; font-size: 19px; font-weight: 700; }
+      .formula strong { display: block; margin-bottom: 5px; font-size: 23px; }
+      .formula p { margin: 0; font-size: 21px; line-height: 1.48; }
+      .blank { background: linear-gradient(to top, var(--accent) 10px, rgba(185,220,66,0) 10px); }
+
+      .pillar-layout { flex: 1; display: grid; grid-template-columns: 430px 1fr; gap: 64px; min-height: 0; }
+      .pillar-intro { display: flex; flex-direction: column; justify-content: space-between; padding-right: 42px; border-right: 2px solid var(--ink); }
+      .pillar-intro h2 { margin: 0; font-size: 68px; line-height: 1.1; letter-spacing: -.05em; }
+      .pillar-intro p { margin: 0; color: var(--muted); font-size: 23px; line-height: 1.6; }
+      .pillar-list { display: flex; flex-direction: column; justify-content: center; gap: 0; }
+      .pillar-row { min-height: 142px; display: grid; grid-template-columns: 86px 230px 1fr; gap: 24px; align-items: center; border-bottom: 1px solid var(--line); }
+      .pillar-row:first-child { border-top: 2px solid var(--ink); }
+      .pillar-row:last-child { border-bottom: 2px solid var(--ink); }
+      .pillar-row .mono { color: var(--muted); font-size: 20px; }
+      .pillar-row h3 { margin: 0; font-size: 38px; letter-spacing: -.035em; }
+      .pillar-row p { margin: 0; color: var(--muted); font-size: 21px; line-height: 1.5; }
+      .pillar-row.active { background: var(--accent); }
+      .pillar-row.active p, .pillar-row.active .mono { color: var(--ink); }
+
+      .journey-layout { flex: 1; display: flex; align-items: center; }
+      .journey-track { width: 100%; display: grid; grid-template-columns: 1fr 90px 1fr 90px 1fr; align-items: stretch; }
+      .journey-stage { min-height: 500px; display: flex; flex-direction: column; padding: 30px; border: 2px solid var(--ink); background: var(--surface); }
+      .journey-stage .mono { color: var(--muted); font-size: 20px; }
+      .journey-stage h2 { margin: auto 0 16px; font-size: 50px; line-height: 1.08; letter-spacing: -.04em; }
+      .journey-stage p { margin: 0; color: var(--muted); font-size: 22px; line-height: 1.55; }
+      .journey-stage:last-child { background: var(--accent); }
+      .journey-stage:last-child p, .journey-stage:last-child .mono { color: var(--ink); }
+      .journey-arrow { display: grid; place-items: center; font-family: "IBM Plex Mono", monospace; font-size: 48px; }
+
+      .outro-layout { flex: 1; display: grid; grid-template-columns: .92fr 1.08fr; gap: 72px; align-items: center; }
+      .outro-copy { display: flex; flex-direction: column; gap: 30px; }
+      .outro-copy h1 { margin: 0; font-size: 92px; line-height: 1.04; letter-spacing: -.06em; }
+      .outro-copy p { margin: 0; max-width: 620px; color: var(--muted); font-size: 25px; line-height: 1.6; }
+      .outro-link { align-self: flex-start; padding: 14px 18px; color: var(--paper); background: var(--ink); font-size: 19px; }
+      .use-list { border-top: 2px solid var(--ink); }
+      .use-item { min-height: 86px; display: grid; grid-template-columns: 58px 1fr; gap: 18px; align-items: center; border-bottom: 1px solid var(--line); }
+      .use-item .mono { color: var(--muted); font-size: 17px; }
+      .use-item p { margin: 0; font-size: 21px; line-height: 1.45; }
+      .use-item:nth-child(3) { background: var(--accent); }
+      .use-item:nth-child(3) .mono { color: var(--ink); }
+      .final-stamp { position: absolute; right: 88px; bottom: 72px; z-index: 3; padding: 8px 12px; border: 2px solid var(--ink); font-size: 16px; font-weight: 700; transform: rotate(-2deg); }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-d727" id="root" data-composition-id="creator-engine-intro" data-start="0" data-duration="42" data-width="1920" data-height="1080" data-track-index="0">
+      <section data-hf-id="hf-k674" id="scene-1" class="scene">
+        <div data-hf-id="hf-ng0h" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-qugy" class="corner-block" data-layout-ignore=""></div><div data-hf-id="hf-8a09" class="index-ghost mono" data-layout-ignore="">01</div>
+        <div data-hf-id="hf-cn5c" class="scene-content">
+          <header data-hf-id="hf-g11z" class="frame-header"><div data-hf-id="hf-oojr" class="brand"><span data-hf-id="hf-wz3b" class="brand-mark mono">CE</span><span data-hf-id="hf-p30w">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-zs0w" class="frame-meta mono"><span data-hf-id="hf-osw5">INTRODUCTION</span><b data-hf-id="hf-lac7">01 / 06</b></div></header>
+          <div data-hf-id="hf-3khb" class="hero-layout">
+            <div data-hf-id="hf-jloi" class="hero-copy"><div data-hf-id="hf-axk1" class="eyebrow">游戏创作方法</div><h1 data-hf-id="hf-su74" class="display"><span data-hf-id="hf-4rbe">不是制作引擎。</span><span data-hf-id="hf-605t" class="accented">而是创作引擎。</span></h1><p data-hf-id="hf-msrx" class="lede">从最初的想法出发，通过结构化的文本填空，帮助创作者把游戏构思说清楚。</p></div>
+            <aside data-hf-id="hf-pg88" class="system-diagram"><header data-hf-id="hf-pjol" class="mono"><span data-hf-id="hf-2xpk">SYSTEM FLOW</span><b data-hf-id="hf-x14a">LOCAL / NO AI</b></header><div data-hf-id="hf-yxfs" class="system-node"><span data-hf-id="hf-gxj4" class="node-index mono">01</span><div data-hf-id="hf-yeow"><b data-hf-id="hf-67z9">输入</b><p data-hf-id="hf-gy27">保留创作最初的火花</p></div></div><div data-hf-id="hf-v0w0" class="system-node"><span data-hf-id="hf-fqm1" class="node-index mono">02</span><div data-hf-id="hf-y7yw"><b data-hf-id="hf-rznk">言语化</b><p data-hf-id="hf-iqa4">将感性判断变成可讨论的文本</p></div></div><div data-hf-id="hf-ttyx" class="system-node"><span data-hf-id="hf-g4x2" class="node-index mono">03</span><div data-hf-id="hf-x11t"><b data-hf-id="hf-0nqk">设计框架</b><p data-hf-id="hf-57jz">形成可检查、可同步的方案</p></div></div></aside>
+          </div>
+        </div><div data-hf-id="hf-taej" class="scene-rule"></div>
+      </section>
+
+      <section data-hf-id="hf-v1or" id="scene-2" class="scene">
+        <div data-hf-id="hf-how5" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-9gxc" class="index-ghost mono" data-layout-ignore="">02</div>
+        <div data-hf-id="hf-o0eg" class="scene-content">
+          <header data-hf-id="hf-ysev" class="frame-header"><div data-hf-id="hf-jbzb" class="brand"><span data-hf-id="hf-b6fb" class="brand-mark mono">CE</span><span data-hf-id="hf-o1go">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-ufmg" class="frame-meta mono"><span data-hf-id="hf-waig">DESIGN ARTICULATION</span><b data-hf-id="hf-u5ug">02 / 06</b></div></header>
+          <div data-hf-id="hf-et81" class="logic-layout">
+            <div data-hf-id="hf-3e81" class="logic-stack"><div data-hf-id="hf-b4gg" class="eyebrow">基础理论 · 言语化设计</div><div data-hf-id="hf-kidn" class="logic-word"><span data-hf-id="hf-9ak9">说不清楚</span><span data-hf-id="hf-v68i" class="arrow">→</span><span data-hf-id="hf-khmh">做不明白</span></div><div data-hf-id="hf-9p4b" class="logic-word"><span data-hf-id="hf-ra8d">说不清楚</span><span data-hf-id="hf-f1jq" class="arrow">→</span><span data-hf-id="hf-37rn">做不统一</span></div><p data-hf-id="hf-qgoe" class="logic-caption">提前思考，减少设计遗漏与时间浪费；深入沟通，让多人协作拥有共同的判断标准。</p></div>
+            <aside data-hf-id="hf-rr18" class="principle-panel"><span data-hf-id="hf-pnva" class="mono">PRINCIPLE / 001</span><h2 data-hf-id="hf-zft1">思想先被语言固定，才能被团队共同执行。</h2><p data-hf-id="hf-wqif">言语化不是写文档的附属工作，而是创作本身的一部分。</p><div data-hf-id="hf-6t0o" class="principle-meter"><span data-hf-id="hf-uckh"></span><span data-hf-id="hf-l73p"></span></div></aside>
+          </div>
+        </div><div data-hf-id="hf-kt6z" class="scene-rule"></div>
+      </section>
+
+      <section data-hf-id="hf-r3kq" id="scene-3" class="scene">
+        <div data-hf-id="hf-ivt8" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-92mb" class="index-ghost mono" data-layout-ignore="">03</div>
+        <div data-hf-id="hf-mthd" class="scene-content">
+          <header data-hf-id="hf-ye3u" class="frame-header"><div data-hf-id="hf-ixoa" class="brand"><span data-hf-id="hf-as4a" class="brand-mark mono">CE</span><span data-hf-id="hf-mujl">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-t8pd" class="frame-meta mono"><span data-hf-id="hf-7how">FROM SPARK TO STRUCTURE</span><b data-hf-id="hf-svpx">03 / 06</b></div></header>
+          <div data-hf-id="hf-la52" class="method-layout">
+            <section data-hf-id="hf-5h3w" class="idea-column"><span data-hf-id="hf-x8nj" class="mono">STEP 01 / 最初想法</span><h2 data-hf-id="hf-3r32">诚实记录初心。</h2><p data-hf-id="hf-le9m">它是之后检查偏离、补充、落地、加强与冲突的起点。</p><div data-hf-id="hf-02oh" class="idea-input">“我想做一个……”<span data-hf-id="hf-uddi">先写下最不愿意失去的那一点。</span></div></section>
+            <section data-hf-id="hf-fcm2" class="sentence-column">
+              <article data-hf-id="hf-nmy5" class="formula"><span data-hf-id="hf-d1eo" class="formula-index mono">01</span><div data-hf-id="hf-xfcu"><strong data-hf-id="hf-oez7">什么游戏</strong><p data-hf-id="hf-b0l9">玩家作为<span data-hf-id="hf-elc9" class="blank">身份</span>，反复<span data-hf-id="hf-97hg" class="blank">核心动作</span>，以<span data-hf-id="hf-2yvy" class="blank">目标</span>；但有<span data-hf-id="hf-sojd" class="blank">约束或反转</span>。</p></div></article>
+              <article data-hf-id="hf-u4rl" class="formula"><span data-hf-id="hf-buhl" class="formula-index mono">02</span><div data-hf-id="hf-w8fr"><strong data-hf-id="hf-xrfh">什么体验</strong><p data-hf-id="hf-uwlj">为<span data-hf-id="hf-kbrt" class="blank">目标玩家</span>提供<span data-hf-id="hf-7aja" class="blank">核心感受</span>，主要通过<span data-hf-id="hf-974z" class="blank">关键动态</span>实现。</p></div></article>
+              <article data-hf-id="hf-vboo" class="formula"><span data-hf-id="hf-c8sm" class="formula-index mono">03</span><div data-hf-id="hf-wmqs"><strong data-hf-id="hf-2oyo">如何验证</strong><p data-hf-id="hf-meid">机制产生<span data-hf-id="hf-gkqm" class="blank">行为或策略</span>，进而形成<span data-hf-id="hf-kdb5" class="blank">目标体验</span>；证据是<span data-hf-id="hf-jett" class="blank">可观察信号</span>。</p></div></article>
+            </section>
+          </div>
+        </div><div data-hf-id="hf-kevy" class="scene-rule"></div>
+      </section>
+
+      <section data-hf-id="hf-8bv1" id="scene-4" class="scene">
+        <div data-hf-id="hf-ihi7" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-7336" class="index-ghost mono" data-layout-ignore="">04</div>
+        <div data-hf-id="hf-n7se" class="scene-content">
+          <header data-hf-id="hf-xzst" class="frame-header"><div data-hf-id="hf-ijd9" class="brand"><span data-hf-id="hf-adt9" class="brand-mark mono">CE</span><span data-hf-id="hf-n8um">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-tn0e" class="frame-meta mono"><span data-hf-id="hf-jnio">FOUR DESIGN PILLARS</span><b data-hf-id="hf-147q">04 / 06</b></div></header>
+          <div data-hf-id="hf-mern" class="pillar-layout">
+            <section data-hf-id="hf-6lpl" class="pillar-intro"><div data-hf-id="hf-vftp"><div data-hf-id="hf-uibn" class="eyebrow">游戏设计四大支柱</div><h2 data-hf-id="hf-8rv2">先定义地基，再说明个性。</h2></div><p data-hf-id="hf-hz01">每根支柱都写清“基础框架 + 风格特点”，并说明它对另外三项的指导、支持或要求。</p></section>
+            <section data-hf-id="hf-ns6t" class="pillar-list"><article data-hf-id="hf-9ivq" class="pillar-row"><span data-hf-id="hf-j8bc" class="mono">01 / N</span><h3 data-hf-id="hf-wlgk">叙事</h3><p data-hf-id="hf-xdd0">玩家是谁，处于什么情境，意义如何逐步显现。</p></article><article data-hf-id="hf-g15s" class="pillar-row active"><span data-hf-id="hf-kfrc" class="mono">02 / M</span><h3 data-hf-id="hf-tg84">机制</h3><p data-hf-id="hf-mkw1">玩家反复做什么，规则如何产生选择、反馈和成长。</p></article><article data-hf-id="hf-35x6" class="pillar-row"><span data-hf-id="hf-vzj3" class="mono">03 / A</span><h3 data-hf-id="hf-x5ns">美学</h3><p data-hf-id="hf-owtt">画面、声音、动效与交互共同形成怎样的感受。</p></article><article data-hf-id="hf-3k87" class="pillar-row"><span data-hf-id="hf-vj7p" class="mono">04 / T</span><h3 data-hf-id="hf-inuh">技术</h3><p data-hf-id="hf-6oms">哪些能力是体验成立的条件，哪些风险需要先验证。</p></article></section>
+          </div>
+        </div><div data-hf-id="hf-k0kx" class="scene-rule"></div>
+      </section>
+
+      <section data-hf-id="hf-7k78" id="scene-5" class="scene">
+        <div data-hf-id="hf-jofa" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-6os5" class="index-ghost mono" data-layout-ignore="">05</div>
+        <div data-hf-id="hf-m0vb" class="scene-content">
+          <header data-hf-id="hf-0ry0" class="frame-header"><div data-hf-id="hf-lbig" class="brand"><span data-hf-id="hf-d5yg" class="brand-mark mono">CE</span><span data-hf-id="hf-m1xj">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-sg3b" class="frame-meta mono"><span data-hf-id="hf-v2r8">PLAYER-SIDE CONCEPT</span><b data-hf-id="hf-usw3">05 / 06</b></div></header>
+          <div data-hf-id="hf-zo3o" class="eyebrow">从玩家角度想象完整过程</div>
+          <div data-hf-id="hf-xf0j" class="journey-layout"><div data-hf-id="hf-l5fy" class="journey-track"><article data-hf-id="hf-hnym" class="journey-stage"><span data-hf-id="hf-un8x" class="mono">01 / BEFORE</span><h2 data-hf-id="hf-ktja">看见游戏</h2><p data-hf-id="hf-jvek">主题、类型、关联游戏，共同建立进入游戏前的体验预期。</p></article><div data-hf-id="hf-s0da" class="journey-arrow">→</div><article data-hf-id="hf-nw5u" class="journey-stage"><span data-hf-id="hf-5seo" class="mono">02 / 10 MIN</span><h2 data-hf-id="hf-de1i">决定留下</h2><p data-hf-id="hf-mvh5">满足或扭转预期，尽早给出独特体验，并建立继续游玩的目标。</p></article><div data-hf-id="hf-062q" class="journey-arrow">→</div><article data-hf-id="hf-oagv" class="journey-stage"><span data-hf-id="hf-wnp7" class="mono">03 / FINALE</span><h2 data-hf-id="hf-3km4">完成体验</h2><p data-hf-id="hf-7vjz">中后期机制与内容持续变化，最终形成决定游戏上限的终极体验。</p></article></div></div>
+        </div><div data-hf-id="hf-jm9w" class="scene-rule"></div>
+      </section>
+
+      <section data-hf-id="hf-g833" id="scene-6" class="scene">
+        <div data-hf-id="hf-ja49" class="grid-bg" data-layout-ignore=""></div><div data-hf-id="hf-khly" class="corner-block" data-layout-ignore=""></div><div data-hf-id="hf-7vp8" class="index-ghost mono" data-layout-ignore="">06</div>
+        <div data-hf-id="hf-3tp9" class="scene-content final-exit">
+          <header data-hf-id="hf-0dmz" class="frame-header"><div data-hf-id="hf-kx7f" class="brand"><span data-hf-id="hf-crnf" class="brand-mark mono">CE</span><span data-hf-id="hf-mg8k">CreatorEngine / 创作引擎</span></div><div data-hf-id="hf-suec" class="frame-meta mono"><span data-hf-id="hf-bfzk">USE THE DOCUMENT</span><b data-hf-id="hf-ny7o">06 / 06</b></div></header>
+          <div data-hf-id="hf-3lxs" class="outro-layout">
+            <section data-hf-id="hf-jpzp" class="outro-copy"><div data-hf-id="hf-9vzc" class="eyebrow">设计摘要不是终点</div><h1 data-hf-id="hf-iffj">先说清楚。再开始制作。</h1><p data-hf-id="hf-e75z">在制作前、制作中与制作后持续更新，让设计成为可以讨论、检查、同步和迭代的共同对象。</p><div data-hf-id="hf-pa65" class="outro-link mono">leoatopos.github.io/CreatorEngine</div></section>
+            <section data-hf-id="hf-c9qu" class="use-list"><article data-hf-id="hf-pava" class="use-item"><span data-hf-id="hf-12pv" class="mono">01</span><p data-hf-id="hf-0d9g">理清创作思路，查漏补缺</p></article><article data-hf-id="hf-vway" class="use-item"><span data-hf-id="hf-0oeu" class="mono">02</span><p data-hf-id="hf-xgae">比较并筛选值得制作的项目</p></article><article data-hf-id="hf-walz" class="use-item"><span data-hf-id="hf-0a3t" class="mono">03</span><p data-hf-id="hf-sdj2">保持团队认知同步与理解清晰</p></article><article data-hf-id="hf-wox0" class="use-item"><span data-hf-id="hf-zvss" class="mono">04</span><p data-hf-id="hf-lkr4">根据反馈定位差异与问题</p></article><article data-hf-id="hf-x381" class="use-item"><span data-hf-id="hf-zhhr" class="mono">05</span><p data-hf-id="hf-ahlg">研究其他游戏，训练整体设计能力</p></article><article data-hf-id="hf-xhj2" class="use-item"><span data-hf-id="hf-z36q" class="mono">06</span><p data-hf-id="hf-hp7d">概括游玩体验，与创作者形成共鸣</p></article></section>
+          </div>
+        </div><div data-hf-id="hf-31vn" class="final-stamp mono final-exit">LOCAL · RULE-DRIVEN · NO AI</div><div data-hf-id="hf-uvik" class="scene-rule final-exit"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      function pushScene(oldScene, newScene, at) {
+        tl.to(oldScene, { x: -1920, duration: 0.5, ease: "power3.inOut" }, at);
+        tl.fromTo(newScene, { x: 1920, opacity: 1 }, { x: 0, opacity: 1, duration: 0.5, ease: "power3.inOut" }, at);
+        tl.set(oldScene, { opacity: 0 }, at + 0.51);
+      }
+
+      tl.from("#scene-1 .frame-header", { y: -34, opacity: 0, duration: 0.55, ease: "expo.out" }, 0.2);
+      tl.from("#scene-1 .eyebrow", { x: -54, opacity: 0, duration: 0.4, ease: "power4.out" }, 0.48);
+      tl.from("#scene-1 .display span:first-child", { y: 58, opacity: 0, duration: 0.68, ease: "circ.out" }, 0.62);
+      tl.from("#scene-1 .display span:last-child", { x: 82, opacity: 0, duration: 0.58, ease: "expo.out" }, 0.82);
+      tl.from("#scene-1 .lede", { opacity: 0, duration: 0.82, ease: "sine.out" }, 1.05);
+      tl.from("#scene-1 .system-diagram", { scale: 0.94, opacity: 0, duration: 0.5, ease: "back.out(1.25)" }, 0.72);
+      tl.from("#scene-1 .system-node", { x: 44, opacity: 0, duration: 0.34, stagger: 0.1, ease: "power2.out" }, 1.02);
+      tl.from("#scene-1 .scene-rule", { scaleX: 0, duration: 0.9, ease: "power4.out" }, 0.3);
+
+      pushScene("#scene-1", "#scene-2", 6.4);
+      tl.from("#scene-2 .frame-header", { y: -36, opacity: 0, duration: 0.42, ease: "expo.out" }, 6.62);
+      tl.from("#scene-2 .eyebrow", { x: -60, opacity: 0, duration: 0.38, ease: "power4.out" }, 6.78);
+      tl.from("#scene-2 .logic-word", { x: -80, opacity: 0, duration: 0.5, stagger: 0.16, ease: "circ.out" }, 6.9);
+      tl.from("#scene-2 .logic-caption", { y: 34, opacity: 0, duration: 0.62, ease: "sine.out" }, 7.34);
+      tl.from("#scene-2 .principle-panel", { scale: 0.92, opacity: 0, duration: 0.55, ease: "back.out(1.2)" }, 6.84);
+      tl.from("#scene-2 .principle-panel > *", { y: 24, opacity: 0, duration: 0.36, stagger: 0.09, ease: "power2.out" }, 7.16);
+      tl.from("#scene-2 .scene-rule", { scaleX: 0, duration: 0.72, ease: "power3.out" }, 6.7);
+
+      pushScene("#scene-2", "#scene-3", 13.4);
+      tl.from("#scene-3 .frame-header", { y: -38, opacity: 0, duration: 0.45, ease: "expo.out" }, 13.62);
+      tl.from("#scene-3 .idea-column", { x: -72, opacity: 0, duration: 0.58, ease: "power4.out" }, 13.76);
+      tl.from("#scene-3 .idea-column > *", { y: 26, opacity: 0, duration: 0.34, stagger: 0.08, ease: "circ.out" }, 14.05);
+      tl.from("#scene-3 .formula", { x: 92, opacity: 0, duration: 0.46, stagger: 0.13, ease: "expo.out" }, 13.88);
+      tl.from("#scene-3 .formula-index", { scale: 0.55, opacity: 0, duration: 0.3, stagger: 0.13, ease: "back.out(1.4)" }, 14.12);
+      tl.from("#scene-3 .scene-rule", { scaleX: 0, duration: 0.78, ease: "power3.out" }, 13.68);
+
+      pushScene("#scene-3", "#scene-4", 20.4);
+      tl.from("#scene-4 .frame-header", { y: -35, opacity: 0, duration: 0.44, ease: "expo.out" }, 20.62);
+      tl.from("#scene-4 .pillar-intro", { x: -66, opacity: 0, duration: 0.58, ease: "power4.out" }, 20.78);
+      tl.from("#scene-4 .pillar-intro > *", { y: 34, opacity: 0, duration: 0.4, stagger: 0.14, ease: "circ.out" }, 21.02);
+      tl.from("#scene-4 .pillar-row", { x: 92, opacity: 0, duration: 0.42, stagger: 0.09, ease: "expo.out" }, 20.92);
+      tl.from("#scene-4 .pillar-row h3", { x: 34, opacity: 0, duration: 0.44, stagger: 0.09, ease: "sine.out" }, 21.12);
+      tl.from("#scene-4 .scene-rule", { scaleX: 0, duration: 0.76, ease: "power3.out" }, 20.7);
+
+      pushScene("#scene-4", "#scene-5", 27.4);
+      tl.from("#scene-5 .frame-header", { y: -36, opacity: 0, duration: 0.43, ease: "expo.out" }, 27.62);
+      tl.from("#scene-5 .eyebrow", { x: -58, opacity: 0, duration: 0.42, ease: "power4.out" }, 27.78);
+      tl.from("#scene-5 .journey-stage", { y: 74, opacity: 0, duration: 0.55, stagger: 0.15, ease: "circ.out" }, 27.94);
+      tl.from("#scene-5 .journey-arrow", { scale: 0.4, opacity: 0, duration: 0.32, stagger: 0.2, ease: "back.out(1.35)" }, 28.24);
+      tl.from("#scene-5 .journey-stage h2", { x: -34, opacity: 0, duration: 0.38, stagger: 0.15, ease: "expo.out" }, 28.28);
+      tl.from("#scene-5 .scene-rule", { scaleX: 0, duration: 0.74, ease: "power3.out" }, 27.68);
+
+      pushScene("#scene-5", "#scene-6", 34.4);
+      tl.from("#scene-6 .frame-header", { y: -38, opacity: 0, duration: 0.46, ease: "expo.out" }, 34.62);
+      tl.from("#scene-6 .eyebrow", { x: -62, opacity: 0, duration: 0.4, ease: "power4.out" }, 34.8);
+      tl.from("#scene-6 .outro-copy h1", { y: 66, opacity: 0, duration: 0.62, ease: "circ.out" }, 34.94);
+      tl.from("#scene-6 .outro-copy p", { opacity: 0, duration: 0.76, ease: "sine.out" }, 35.18);
+      tl.from("#scene-6 .outro-link", { scale: 0.88, opacity: 0, duration: 0.4, ease: "back.out(1.25)" }, 35.4);
+      tl.from("#scene-6 .use-item", { x: 88, opacity: 0, duration: 0.38, stagger: 0.07, ease: "expo.out" }, 34.9);
+      tl.from("#scene-6 .final-stamp", { rotation: -10, scale: 0.7, opacity: 0, duration: 0.46, ease: "back.out(1.4)" }, 35.7);
+      tl.from("#scene-6 .scene-rule", { scaleX: 0, duration: 0.75, ease: "power3.out" }, 34.68);
+      tl.to("#scene-6 .final-exit", { opacity: 0, duration: 0.6, ease: "power2.in" }, 41.1);
+
+      window.__timelines["creator-engine-intro"] = tl;
+    </script>
+  </body>
+</html>
